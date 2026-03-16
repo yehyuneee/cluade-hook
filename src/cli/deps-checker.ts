@@ -90,7 +90,7 @@ export async function checkDependencies(): Promise<DepCheck[]> {
     }
     results.push({
       name: dep.name,
-      command: dep.versionCommand,
+      command: dep.command,
       required: dep.required,
       purpose: dep.purpose,
       installHint: dep.installHint,

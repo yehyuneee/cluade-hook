@@ -163,13 +163,13 @@ async function initWithNL(
     }
   }
 
-  // Convert to MergedConfig and generate
-  const config = harnessToMergedConfig(harness);
-  const result = await generate({ projectDir, config });
-
-  // Save harness.yaml to project root
+  // Save harness.yaml first (source of truth)
   const harnessYamlPath = path.join(projectDir, "harness.yaml");
   await fs.writeFile(harnessYamlPath, yaml.dump(harness, { lineWidth: 120 }), "utf-8");
+
+  // Convert to MergedConfig and generate derived files
+  const config = harnessToMergedConfig(harness);
+  const result = await generate({ projectDir, config });
 
   // Save state
   await writeHarnessState(projectDir, {

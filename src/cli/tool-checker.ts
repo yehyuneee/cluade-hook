@@ -30,9 +30,10 @@ const INSTALL_HINTS: Record<string, string> = {
   biome: "npm install -D @biomejs/biome",
 };
 
-function extractBinary(command: string): string {
-  const parts = command.trim().split(/\s+/);
-  return parts[0];
+function extractBinary(command: string): string | undefined {
+  const trimmed = command.trim();
+  if (!trimmed) return undefined;
+  return trimmed.split(/\s+/)[0];
 }
 
 export function extractToolNames(config: HarnessConfig): ToolRef[] {
@@ -41,6 +42,7 @@ export function extractToolNames(config: HarnessConfig): ToolRef[] {
 
   for (const cmd of config.enforcement.preCommit) {
     const name = extractBinary(cmd);
+    if (!name) continue;
     if (!seen.has(name)) {
       seen.add(name);
       tools.push({ name, source: "pre-commit" });
@@ -49,6 +51,7 @@ export function extractToolNames(config: HarnessConfig): ToolRef[] {
 
   for (const ps of config.enforcement.postSave) {
     const name = extractBinary(ps.command);
+    if (!name) continue;
     if (!seen.has(name)) {
       seen.add(name);
       tools.push({ name, source: "post-save hook" });

@@ -65,6 +65,7 @@ export function formatConfigSummary(config: HarnessConfig): string {
   const hasEnforcement =
     config.enforcement.preCommit.length > 0 ||
     config.enforcement.blockedPaths.length > 0 ||
+    config.enforcement.blockedCommands.length > 0 ||
     config.enforcement.postSave.length > 0;
 
   if (hasEnforcement) {
@@ -75,6 +76,9 @@ export function formatConfigSummary(config: HarnessConfig): string {
     }
     if (config.enforcement.blockedPaths.length > 0) {
       lines.push(`    Blocked paths: ${config.enforcement.blockedPaths.join(", ")}`);
+    }
+    if (config.enforcement.blockedCommands.length > 0) {
+      lines.push(`    Blocked commands: ${config.enforcement.blockedCommands.join(", ")}`);
     }
     if (config.enforcement.postSave.length > 0) {
       for (const ps of config.enforcement.postSave) {
