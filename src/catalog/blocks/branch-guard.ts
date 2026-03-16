@@ -25,12 +25,15 @@ if echo "$COMMAND" | grep -qE "git commit|git push"; then
     exit 0
   fi
   MERGED=0
-  if command -v gh >&2 2>&1; then
-    COUNT=$(gh pr list --state merged --head "$BRANCH" --json number --jq 'length' 2>/dev/null || echo "0")
-    [[ "\${COUNT:-0}" -gt 0 ]] && MERGED=1
-  else
-    git fetch origin "$MAIN" --quiet >&2 2>&1 || true
-    if git branch -r --merged "origin/$MAIN" 2>/dev/null | grep -q "origin/$BRANCH"; then
+  if command -v gh >/dev/null 2>&1; then
+    COUNT=$(gh pr list --state merged --head "$BRANCH" --json number --jq 'length' 2>/dev/null || echo "")
+    if [[ "$COUNT" =~ ^[0-9]+$ ]] && [[ "$COUNT" -gt 0 ]]; then
+      MERGED=1
+    fi
+  fi
+  if [[ "$MERGED" -eq 0 ]]; then
+    git fetch origin "$MAIN" --quiet >/dev/null 2>&1 || true
+    if git branch -r --merged "origin/$MAIN" 2>/dev/null | grep -qE "origin/\${BRANCH}$"; then
       MERGED=1
     fi
   fi
