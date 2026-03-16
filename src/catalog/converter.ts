@@ -45,7 +45,13 @@ export async function convertHookEntries(
     }
     seenBlockIds.add(entry.block);
 
-    const scriptContent = renderTemplate(block.template, entry.params as Record<string, unknown>);
+    let scriptContent: string;
+    try {
+      scriptContent = renderTemplate(block.template, entry.params as Record<string, unknown>);
+    } catch (err) {
+      errors.push(`Failed to render block "${entry.block}": ${(err as Error).message}`);
+      continue;
+    }
     const scriptName = `${entry.block}.sh`;
     const scriptPath = path.join(projectDir, ".claude", "hooks", scriptName);
     scripts.set(scriptPath, scriptContent);
