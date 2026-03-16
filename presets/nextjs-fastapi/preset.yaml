@@ -34,7 +34,7 @@ hooks:
         set -euo pipefail
         INPUT=$(cat)
         COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
-        if echo "$COMMAND" | grep -qE "^git commit"; then
+        if echo "$COMMAND" | grep -qE "git commit"; then
           echo "oh-my-harness: Running full-stack tests before commit..." >&2
           FAILED=0
           if [[ -f "package.json" ]]; then

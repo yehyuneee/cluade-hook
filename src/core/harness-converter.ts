@@ -30,7 +30,7 @@ export function harnessToMergedConfig(harness: HarnessConfig): MergedConfig {
   // preCommit hook
   if (harness.enforcement.preCommit.length > 0) {
     const commands = harness.enforcement.preCommit
-      .map((cmd) => `    echo "oh-my-harness: Running ${cmd} before commit..." >&2\n    if ! ${cmd} 2>&1; then\n      echo "{\\"decision\\": \\"block\\", \\"reason\\": \\"oh-my-harness: ${cmd} failed, commit blocked\\"}"\n      exit 0\n    fi`)
+      .map((cmd) => `    echo "oh-my-harness: Running ${cmd} before commit..." >&2\n    if ! ${cmd} >&2 2>&1; then\n      echo "{\\"decision\\": \\"block\\", \\"reason\\": \\"oh-my-harness: ${cmd} failed, commit blocked\\"}"\n      exit 0\n    fi`)
       .join("\n");
 
     preToolUse.push({
@@ -41,7 +41,7 @@ export function harnessToMergedConfig(harness: HarnessConfig): MergedConfig {
 set -euo pipefail
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
-if echo "$COMMAND" | grep -qE "^git commit"; then
+if echo "$COMMAND" | grep -qE "git commit"; then
 ${commands}
 fi
 exit 0
