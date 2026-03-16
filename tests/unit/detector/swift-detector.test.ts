@@ -98,12 +98,12 @@ describe("swiftDetector", () => {
 
     it("sets xcodebuild test command with scheme", async () => {
       const result = await swiftDetector.detect(tmpDir);
-      expect(result.testCommands).toContain(`xcodebuild test -scheme ${projectName}`);
+      expect(result.testCommands).toContain(`xcodebuild test -scheme "${projectName}"`);
     });
 
-    it("sets xcodebuild build command", async () => {
+    it("sets xcodebuild build command with scheme", async () => {
       const result = await swiftDetector.detect(tmpDir);
-      expect(result.buildCommands).toContain("xcodebuild build");
+      expect(result.buildCommands).toContain(`xcodebuild build -scheme "${projectName}"`);
     });
 
     it("includes .xcodeproj in detectedFiles", async () => {
@@ -133,7 +133,7 @@ describe("swiftDetector", () => {
 
     it("sets xcodebuild test command", async () => {
       const result = await swiftDetector.detect(tmpDir);
-      expect(result.testCommands).toContain(`xcodebuild test -scheme ${projectName}`);
+      expect(result.testCommands).toContain(`xcodebuild test -scheme "${projectName}"`);
     });
   });
 
@@ -154,16 +154,18 @@ describe("swiftDetector", () => {
       expect(result.frameworks).toContain("xcode");
     });
 
-    it("sets xcodebuild test command with workspace", async () => {
+    it("sets xcodebuild test command with workspace and scheme", async () => {
       const result = await swiftDetector.detect(tmpDir);
       expect(result.testCommands).toContain(
-        `xcodebuild test -workspace ${workspaceName}.xcworkspace`
+        `xcodebuild test -workspace "${workspaceName}.xcworkspace" -scheme "${workspaceName}"`
       );
     });
 
-    it("sets xcodebuild build command", async () => {
+    it("sets xcodebuild build command with workspace and scheme", async () => {
       const result = await swiftDetector.detect(tmpDir);
-      expect(result.buildCommands).toContain("xcodebuild build");
+      expect(result.buildCommands).toContain(
+        `xcodebuild build -workspace "${workspaceName}.xcworkspace" -scheme "${workspaceName}"`
+      );
     });
 
     it("includes .xcworkspace in detectedFiles", async () => {
@@ -181,17 +183,19 @@ describe("swiftDetector", () => {
       await fs.mkdir(path.join(tmpDir, `${projectName}.xcodeproj`));
     });
 
-    it("uses workspace test command, not xcodeproj scheme", async () => {
+    it("uses workspace test command with workspace scheme, not xcodeproj scheme", async () => {
       const result = await swiftDetector.detect(tmpDir);
       expect(result.testCommands).toContain(
-        `xcodebuild test -workspace ${workspaceName}.xcworkspace`
+        `xcodebuild test -workspace "${workspaceName}.xcworkspace" -scheme "${workspaceName}"`
       );
-      expect(result.testCommands).not.toContain(`xcodebuild test -scheme ${projectName}`);
+      expect(result.testCommands).not.toContain(`xcodebuild test -scheme "${projectName}"`);
     });
 
-    it("sets xcodebuild build command", async () => {
+    it("sets xcodebuild build command with workspace and scheme", async () => {
       const result = await swiftDetector.detect(tmpDir);
-      expect(result.buildCommands).toContain("xcodebuild build");
+      expect(result.buildCommands).toContain(
+        `xcodebuild build -workspace "${workspaceName}.xcworkspace" -scheme "${workspaceName}"`
+      );
     });
 
     it("includes both workspace and xcodeproj in detectedFiles", async () => {
@@ -203,6 +207,46 @@ describe("swiftDetector", () => {
     it("does not duplicate xcode in frameworks", async () => {
       const result = await swiftDetector.detect(tmpDir);
       expect(result.frameworks?.filter((f) => f === "xcode").length).toBe(1);
+    });
+  });
+
+  describe("Xcode workspace with spaces in name", () => {
+    const workspaceName = "My App";
+
+    beforeEach(async () => {
+      await fs.mkdir(path.join(tmpDir, `${workspaceName}.xcworkspace`));
+    });
+
+    it("quotes workspace path in test command", async () => {
+      const result = await swiftDetector.detect(tmpDir);
+      expect(result.testCommands).toContain(
+        `xcodebuild test -workspace "${workspaceName}.xcworkspace" -scheme "${workspaceName}"`
+      );
+    });
+
+    it("quotes workspace path in build command", async () => {
+      const result = await swiftDetector.detect(tmpDir);
+      expect(result.buildCommands).toContain(
+        `xcodebuild build -workspace "${workspaceName}.xcworkspace" -scheme "${workspaceName}"`
+      );
+    });
+  });
+
+  describe("Xcode project with spaces in name", () => {
+    const projectName = "My App";
+
+    beforeEach(async () => {
+      await fs.mkdir(path.join(tmpDir, `${projectName}.xcodeproj`));
+    });
+
+    it("quotes scheme in test command", async () => {
+      const result = await swiftDetector.detect(tmpDir);
+      expect(result.testCommands).toContain(`xcodebuild test -scheme "${projectName}"`);
+    });
+
+    it("quotes scheme in build command", async () => {
+      const result = await swiftDetector.detect(tmpDir);
+      expect(result.buildCommands).toContain(`xcodebuild build -scheme "${projectName}"`);
     });
   });
 

@@ -222,6 +222,52 @@ describe("pythonDetector", () => {
     expect(result.lintCommands).not.toContain("ruff check");
   });
 
+  it("poetry + .flake8 -> lintCommands uses poetry run flake8", async () => {
+    await writeFile(tmpDir, "poetry.lock", "# auto-generated\n");
+    await writeFile(tmpDir, ".flake8", "[flake8]\nmax-line-length = 88\n");
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.lintCommands).toContain("poetry run flake8");
+    expect(result.lintCommands).not.toContain("flake8");
+    expect(result.packageManagers).toContain("poetry");
+  });
+
+  it("poetry + mypy.ini -> typecheckCommands uses poetry run mypy .", async () => {
+    await writeFile(tmpDir, "poetry.lock", "# auto-generated\n");
+    await writeFile(tmpDir, "mypy.ini", "[mypy]\nstrict = true\n");
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.typecheckCommands).toContain("poetry run mypy .");
+    expect(result.typecheckCommands).not.toContain("mypy .");
+    expect(result.packageManagers).toContain("poetry");
+  });
+
+  it("poetry + [tool.mypy] -> typecheckCommands uses poetry run mypy .", async () => {
+    await writeFile(
+      tmpDir,
+      "pyproject.toml",
+      "[tool.poetry]\nname = \"my-pkg\"\n\n[tool.mypy]\nstrict = true\n",
+    );
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.typecheckCommands).toContain("poetry run mypy .");
+    expect(result.typecheckCommands).not.toContain("mypy .");
+    expect(result.packageManagers).toContain("poetry");
+  });
+
+  it("non-poetry + .flake8 -> lintCommands uses flake8 (no prefix)", async () => {
+    await writeFile(tmpDir, "requirements.txt", "requests==2.31.0\n");
+    await writeFile(tmpDir, ".flake8", "[flake8]\nmax-line-length = 88\n");
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.lintCommands).toContain("flake8");
+    expect(result.lintCommands).not.toContain("poetry run flake8");
+  });
+
+  it("non-poetry + mypy.ini -> typecheckCommands uses mypy . (no prefix)", async () => {
+    await writeFile(tmpDir, "requirements.txt", "requests==2.31.0\n");
+    await writeFile(tmpDir, "mypy.ini", "[mypy]\nstrict = true\n");
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.typecheckCommands).toContain("mypy .");
+    expect(result.typecheckCommands).not.toContain("poetry run mypy .");
+  });
+
   it("deduplicates commands when multiple signals present", async () => {
     await writeFile(
       tmpDir,

@@ -39,17 +39,33 @@ function extractBinary(command: string): string | undefined {
   // Skip gradle wrapper commands (managed by project)
   if (parts[0] === "./gradlew" || parts[0] === "gradlew") return undefined;
 
-  // npx <tool> ... → extract <tool>
-  if (parts[0] === "npx" && parts.length > 1) return parts[1];
+  // npx [options] <tool> ... → skip option flags, extract first non-option token
+  if (parts[0] === "npx") {
+    let i = 1;
+    while (i < parts.length && parts[i].startsWith("-")) {
+      if (parts[i] === "-p" || parts[i] === "--package") i += 2;
+      else i += 1;
+    }
+    return i < parts.length ? parts[i] : undefined;
+  }
 
-  // npm run <script> / npm test / npm <script> → skip (package.json scripts)
-  if (parts[0] === "npm") return undefined;
+  // npm exec <tool> → extract tool; other npm subcommands → skip
+  if (parts[0] === "npm") {
+    if (parts[1] === "exec" && parts.length > 2) return parts[2];
+    return undefined;
+  }
 
-  // pnpm [run] <script> / pnpm test → skip
-  if (parts[0] === "pnpm") return undefined;
+  // pnpm exec/dlx <tool> → extract tool; other pnpm subcommands → skip
+  if (parts[0] === "pnpm") {
+    if ((parts[1] === "exec" || parts[1] === "dlx") && parts.length > 2) return parts[2];
+    return undefined;
+  }
 
-  // yarn [run] <script> / yarn test → skip
-  if (parts[0] === "yarn") return undefined;
+  // yarn dlx <tool> → extract tool; other yarn subcommands → skip
+  if (parts[0] === "yarn") {
+    if (parts[1] === "dlx" && parts.length > 2) return parts[2];
+    return undefined;
+  }
 
   // poetry run <tool> → extract <tool>
   if (parts[0] === "poetry" && parts[1] === "run" && parts.length > 2) return parts[2];

@@ -30,15 +30,16 @@ export const swiftDetector: Detector = {
 
     if (xcworkspace) {
       frameworks.push("xcode");
-      testCommands.push(`xcodebuild test -workspace ${xcworkspace}`);
-      buildCommands.push("xcodebuild build");
+      const workspaceName = path.basename(xcworkspace, ".xcworkspace");
+      testCommands.push(`xcodebuild test -workspace "${xcworkspace}" -scheme "${workspaceName}"`);
+      buildCommands.push(`xcodebuild build -workspace "${xcworkspace}" -scheme "${workspaceName}"`);
       detectedFiles.push(xcworkspace);
       if (xcodeproj) detectedFiles.push(xcodeproj);
     } else if (xcodeproj) {
       frameworks.push("xcode");
       const scheme = path.basename(xcodeproj, ".xcodeproj");
-      testCommands.push(`xcodebuild test -scheme ${scheme}`);
-      buildCommands.push("xcodebuild build");
+      testCommands.push(`xcodebuild test -scheme "${scheme}"`);
+      buildCommands.push(`xcodebuild build -scheme "${scheme}"`);
       detectedFiles.push(xcodeproj);
     } else if (hasPackageSwift) {
       frameworks.push("spm");

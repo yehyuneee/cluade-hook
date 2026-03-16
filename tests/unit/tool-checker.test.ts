@@ -38,6 +38,56 @@ describe("extractToolNames", () => {
     expect(names).toEqual([]);
   });
 
+  it("skips npx option flags and extracts first non-option token", () => {
+    const config = makeConfig({ preCommit: ["npx -p typescript tsc"] });
+    const names = extractToolNames(config);
+    expect(names).toContainEqual(expect.objectContaining({ name: "tsc" }));
+    expect(names.find((n) => n.name === "-p")).toBeUndefined();
+    expect(names.find((n) => n.name === "typescript")).toBeUndefined();
+  });
+
+  it("extracts tool from npx --yes flag", () => {
+    const config = makeConfig({ preCommit: ["npx --yes vitest run"] });
+    const names = extractToolNames(config);
+    expect(names).toContainEqual(expect.objectContaining({ name: "vitest" }));
+  });
+
+  it("extracts tool from npm exec subcommand", () => {
+    const config = makeConfig({ preCommit: ["npm exec vitest -- --run"] });
+    const names = extractToolNames(config);
+    expect(names).toContainEqual(expect.objectContaining({ name: "vitest" }));
+  });
+
+  it("skips npm run (not npm exec)", () => {
+    const config = makeConfig({ preCommit: ["npm run lint"] });
+    const names = extractToolNames(config);
+    expect(names).toEqual([]);
+  });
+
+  it("extracts tool from pnpm dlx", () => {
+    const config = makeConfig({ preCommit: ["pnpm dlx vitest"] });
+    const names = extractToolNames(config);
+    expect(names).toContainEqual(expect.objectContaining({ name: "vitest" }));
+  });
+
+  it("extracts tool from pnpm exec", () => {
+    const config = makeConfig({ preCommit: ["pnpm exec eslint"] });
+    const names = extractToolNames(config);
+    expect(names).toContainEqual(expect.objectContaining({ name: "eslint" }));
+  });
+
+  it("skips pnpm test (not exec/dlx)", () => {
+    const config = makeConfig({ preCommit: ["pnpm test"] });
+    const names = extractToolNames(config);
+    expect(names).toEqual([]);
+  });
+
+  it("extracts tool from yarn dlx", () => {
+    const config = makeConfig({ preCommit: ["yarn dlx prettier"] });
+    const names = extractToolNames(config);
+    expect(names).toContainEqual(expect.objectContaining({ name: "prettier" }));
+  });
+
   it("extracts tool from poetry run prefix", () => {
     const config = makeConfig({
       preCommit: ["poetry run pytest", "poetry run ruff check"],

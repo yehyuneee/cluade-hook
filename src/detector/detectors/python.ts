@@ -107,7 +107,7 @@ export const pythonDetector: Detector = {
     // .flake8 detection
     if (await fileExists(flake8Path)) {
       isPython = true;
-      lintCommands.push("flake8");
+      lintCommands.push(isPoetry ? "poetry run flake8" : "flake8");
       detectedFiles.push(".flake8");
     }
 
@@ -128,14 +128,14 @@ export const pythonDetector: Detector = {
     // mypy.ini detection
     if (await fileExists(mypyIniPath)) {
       isPython = true;
-      typecheckCommands.push("mypy .");
+      typecheckCommands.push(isPoetry ? "poetry run mypy ." : "mypy .");
       detectedFiles.push("mypy.ini");
     }
 
     // pyproject.toml [tool.mypy] detection
     if (pyprojectContent?.includes("[tool.mypy]")) {
       isPython = true;
-      typecheckCommands.push("mypy .");
+      typecheckCommands.push(isPoetry ? "poetry run mypy ." : "mypy .");
       if (!detectedFiles.includes("pyproject.toml")) detectedFiles.push("pyproject.toml");
     }
 
