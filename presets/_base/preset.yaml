@@ -57,7 +57,8 @@ hooks:
       inline: |
         #!/bin/bash
         set -euo pipefail
-        COMMAND="${CLAUDE_TOOL_INPUT_COMMAND:-}"
+        INPUT=$(cat)
+        COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
         DANGEROUS_PATTERNS=("rm -rf /" "rm -rf ~" "sudo rm" "chmod -R 777" ":(){:|:&};:")
         for pattern in "${DANGEROUS_PATTERNS[@]}"; do
           if echo "$COMMAND" | grep -qF "$pattern"; then
@@ -72,7 +73,8 @@ hooks:
       inline: |
         #!/bin/bash
         set -euo pipefail
-        COMMAND="${CLAUDE_TOOL_INPUT_COMMAND:-}"
+        INPUT=$(cat)
+        COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
         if echo "$COMMAND" | grep -qE "^git commit"; then
           if [[ -f "package.json" ]]; then
             if command -v pnpm &>/dev/null && [[ -f "pnpm-lock.yaml" ]]; then

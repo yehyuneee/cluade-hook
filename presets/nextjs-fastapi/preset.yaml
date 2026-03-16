@@ -32,7 +32,8 @@ hooks:
       inline: |
         #!/bin/bash
         set -euo pipefail
-        COMMAND="${CLAUDE_TOOL_INPUT_COMMAND:-}"
+        INPUT=$(cat)
+        COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
         if echo "$COMMAND" | grep -qE "^git commit"; then
           echo "oh-my-harness: Running full-stack tests before commit..." >&2
           FAILED=0

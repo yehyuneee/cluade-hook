@@ -63,11 +63,12 @@ hooks:
       inline: |
         #!/bin/bash
         set -euo pipefail
-        FILE_PATH="${CLAUDE_TOOL_INPUT_FILE_PATH:-${CLAUDE_TOOL_INPUT_PATH:-}}"
+        INPUT=$(cat)
+        FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty' 2>/dev/null)
         [[ -z "$FILE_PATH" ]] && exit 0
         BLOCKED=(".next/" "out/" "node_modules/" "*.min.js" "*.min.css")
         for pattern in "${BLOCKED[@]}"; do
-          if [[ "$FILE_PATH" == $pattern* ]] || [[ "$FILE_PATH" == *$pattern ]]; then
+          if [[ "$FILE_PATH" == *"/$pattern"* ]] || [[ "$FILE_PATH" == "$pattern"* ]]; then
             echo "{\"decision\": \"block\", \"reason\": \"oh-my-harness: protected path $pattern\"}"
             exit 0
           fi
@@ -79,7 +80,8 @@ hooks:
       description: "Runs ESLint after file writes"
       inline: |
         #!/bin/bash
-        FILE_PATH="${CLAUDE_TOOL_INPUT_FILE_PATH:-${CLAUDE_TOOL_INPUT_PATH:-}}"
+        INPUT=$(cat)
+        FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty' 2>/dev/null)
         [[ -z "$FILE_PATH" ]] && exit 0
         if [[ "$FILE_PATH" == *.ts ]] || [[ "$FILE_PATH" == *.tsx ]]; then
           npx eslint --fix "$FILE_PATH" 2>/dev/null || true

@@ -39,7 +39,8 @@ export function harnessToMergedConfig(harness: HarnessConfig): MergedConfig {
       description: "Runs configured checks before git commit",
       inline: `#!/bin/bash
 set -euo pipefail
-COMMAND="\${CLAUDE_TOOL_INPUT_COMMAND:-}"
+INPUT=$(cat)
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 if echo "$COMMAND" | grep -qE "^git commit"; then
 ${commands}
 fi
@@ -60,7 +61,8 @@ exit 0
       description: "Prevents writing to blocked paths",
       inline: `#!/bin/bash
 set -euo pipefail
-FILE_PATH="\${CLAUDE_TOOL_INPUT_FILE_PATH:-\${CLAUDE_TOOL_INPUT_PATH:-}}"
+INPUT=$(cat)
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty' 2>/dev/null)
 [[ -z "$FILE_PATH" ]] && exit 0
 BLOCKED=(${patterns})
 for pattern in "\${BLOCKED[@]}"; do
@@ -86,7 +88,8 @@ exit 0
       description: "Blocks dangerous shell commands",
       inline: `#!/bin/bash
 set -euo pipefail
-COMMAND="\${CLAUDE_TOOL_INPUT_COMMAND:-}"
+INPUT=$(cat)
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 DANGEROUS_PATTERNS=(${patterns})
 for pattern in "\${DANGEROUS_PATTERNS[@]}"; do
   if echo "$COMMAND" | grep -qF "$pattern"; then
@@ -107,7 +110,8 @@ exit 0
       matcher: "Edit|Write",
       description: `Runs ${ps.command} on ${ps.pattern} files after save`,
       inline: `#!/bin/bash
-FILE_PATH="\${CLAUDE_TOOL_INPUT_FILE_PATH:-\${CLAUDE_TOOL_INPUT_PATH:-}}"
+INPUT=$(cat)
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty' 2>/dev/null)
 [[ -z "$FILE_PATH" ]] && exit 0
 if [[ "$FILE_PATH" == ${ps.pattern} ]]; then
   ${ps.command} "$FILE_PATH" 2>/dev/null || true
