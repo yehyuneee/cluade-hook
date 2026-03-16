@@ -42,5 +42,57 @@ export function createCli(): Command {
       await doctorCommand();
     });
 
+  program
+    .command("sync")
+    .description("Regenerate files from harness.yaml")
+    .option("-d, --project-dir <dir>", "Project directory")
+    .action(async (options: { projectDir?: string }) => {
+      const { syncCommand } = await import("./commands/sync.js");
+      await syncCommand(options);
+    });
+
+  const catalogCmd = program
+    .command("catalog")
+    .description("Browse available building blocks");
+
+  catalogCmd
+    .command("list")
+    .description("List all available building blocks")
+    .action(async () => {
+      const { catalogListCommand } = await import("./commands/catalog.js");
+      await catalogListCommand();
+    });
+
+  catalogCmd
+    .command("info <block-id>")
+    .description("Show building block details")
+    .action(async (blockId: string) => {
+      const { catalogInfoCommand } = await import("./commands/catalog.js");
+      await catalogInfoCommand(blockId);
+    });
+
+  const hookCmd = program
+    .command("hook")
+    .description("Manage hooks");
+
+  hookCmd
+    .command("add <block-id>")
+    .description("Add a hook from the catalog")
+    .option("-y, --yes", "Skip confirmation prompts")
+    .option("-d, --project-dir <dir>", "Project directory")
+    .action(async (blockId: string, options: { yes?: boolean; projectDir?: string }) => {
+      const { hookAddCommand } = await import("./commands/hook.js");
+      await hookAddCommand(blockId, options);
+    });
+
+  hookCmd
+    .command("remove <block-id>")
+    .description("Remove a hook")
+    .option("-d, --project-dir <dir>", "Project directory")
+    .action(async (blockId: string, options: { projectDir?: string }) => {
+      const { hookRemoveCommand } = await import("./commands/hook.js");
+      await hookRemoveCommand(blockId, options);
+    });
+
   return program;
 }
