@@ -241,7 +241,7 @@ rules:
     priority: 10
 
 enforcement:
-  preCommit: ["test", "lint", "build"]
+  preCommit: ["pnpm test", "npx eslint .", "npx tsc --noEmit"]
   blockedPaths: [".next/", "node_modules/"]
   blockedCommands: ["rm -rf", "sudo"]
   postSave:
@@ -290,6 +290,10 @@ oh-my-harness/
 │   │   ├── hooks.ts        # Executable hook scripts
 │   │   ├── settings.ts     # .claude/settings.json
 │   │   └── gitignore.ts    # .gitignore updater
+│   ├── detector/
+│   │   ├── project-detector.ts  # Deterministic project detection
+│   │   ├── types.ts             # ProjectFacts, Detector interface
+│   │   └── detectors/           # 14 language detectors
 │   ├── nl/
 │   │   ├── parse-intent.ts     # claude -p integration
 │   │   └── prompt-templates.ts # LLM prompt construction
@@ -301,7 +305,7 @@ oh-my-harness/
 │   ├── nextjs/
 │   ├── fastapi/
 │   └── nextjs-fastapi/
-└── tests/                  # 219 tests (unit + integration)
+└── tests/                  # 422 tests (unit + integration)
 ```
 
 ---
@@ -354,6 +358,7 @@ No code changes required. The registry auto-discovers it.
 - [x] `npx oh-my-harness` — zero-install usage
 - [x] `oh-my-harness sync` — regenerate from harness.yaml
 - [x] Building block catalog — 10 verified hook templates
+- [x] Project detector — 14 language auto-detection for accurate NL generation
 - [ ] Cursor (`.cursor/rules/`) emitter
 - [ ] Codex (`AGENTS.md`) emitter
 - [ ] GitHub Copilot emitter
