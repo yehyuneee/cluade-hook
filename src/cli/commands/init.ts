@@ -102,9 +102,13 @@ export async function initCommand(
     return;
   }
 
-  // Interactive: NL-first flow
-  await initWithNL(projectDir, presetsDir, options);
+  // Interactive: launch TUI flow
+  const { runInitTUI } = await import("../tui/init-flow.js");
+  await runInitTUI({ projectDir, presetsDir });
 }
+
+/** Headless init for CI/automation — bypasses TUI */
+export const initCommandHeadless = initCommand;
 
 async function initWithNL(
   projectDir: string,
