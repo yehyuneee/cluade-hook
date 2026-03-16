@@ -19,7 +19,7 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 if echo "$COMMAND" | grep -qE "git commit|git push"; then
   BRANCH=$(git branch --show-current 2>/dev/null)
   [[ -z "$BRANCH" ]] && exit 0
-  MAIN="{{mainBranch}}"
+  MAIN='{{mainBranch}}'
   if [[ "$BRANCH" == "$MAIN" ]] || [[ "$BRANCH" == "master" && "$MAIN" == "main" ]]; then
     echo "{\\"decision\\": \\"block\\", \\"reason\\": \\"oh-my-harness: direct commits to $BRANCH are blocked. Create a feature branch.\\"}"
     exit 0

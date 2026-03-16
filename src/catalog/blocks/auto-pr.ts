@@ -39,7 +39,7 @@ if ! command -v gh >/dev/null 2>&1; then
 fi
 BRANCH=$(git branch --show-current 2>/dev/null)
 [[ -z "$BRANCH" ]] && exit 0
-BASE="{{baseBranch}}"
+BASE='{{baseBranch}}'
 [[ "$BRANCH" == "$BASE" ]] && exit 0
 EXISTING=$(gh pr list --head "$BRANCH" --base "$BASE" --json number --jq 'length' 2>/dev/null || echo 0)
 if [[ "$EXISTING" -gt 0 ]]; then
@@ -47,7 +47,7 @@ if [[ "$EXISTING" -gt 0 ]]; then
   exit 0
 fi
 DRAFT_FLAG=""
-if [[ "{{draft}}" == "true" ]]; then
+if [[ '{{draft}}' == "true" ]]; then
   DRAFT_FLAG="--draft"
 fi
 echo "oh-my-harness: Creating PR for branch $BRANCH -> $BASE..." >&2
