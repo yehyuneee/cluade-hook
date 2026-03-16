@@ -23,7 +23,26 @@ Project description: ${description}
 Output format: {"presets": ["preset-name-1", "preset-name-2"], "confidence": 0.9, "explanation": "brief reason"}`;
 }
 
-export function buildHarnessGenerationPrompt(description: string): string {
+export interface CatalogBlockInfo {
+  id: string;
+  description: string;
+  params: Array<{ name: string; required: boolean; default?: unknown; description: string }>;
+}
+
+export function buildHarnessGenerationPrompt(description: string, catalogBlocks?: CatalogBlockInfo[]): string {
+  const catalogSection = catalogBlocks && catalogBlocks.length > 0
+    ? `\nAvailable building blocks (use in the hooks field):
+${catalogBlocks
+  .map((b) => {
+    const paramDesc =
+      b.params.length > 0
+        ? ` Params: ${b.params.map((p) => `${p.name}${p.required ? " (required)" : p.default !== undefined ? ` (default: ${String(p.default)})` : ""}`).join(", ")}`
+        : "";
+    return `- ${b.id}: ${b.description}.${paramDesc}`;
+  })
+  .join("\n")}\n`
+    : "";
+
   return `You are a configuration generator for oh-my-harness, an AI code agent harness tool. Given a project description, generate a complete harness.yaml configuration in YAML format. Return ONLY the YAML content with no markdown formatting.
 
 The harness.yaml schema has these fields:
@@ -31,7 +50,9 @@ The harness.yaml schema has these fields:
 - project: object with name (optional string), description (optional string), stacks (array of {name, framework, language, packageManager?, testRunner?, linter?})
 - rules: array of {id, title, content (markdown), priority (number, lower = higher in file)}
 - enforcement: object with preCommit (array of commands like "test", "lint"), blockedPaths (array of glob patterns), blockedCommands (array of dangerous commands), postSave (array of {pattern, command})
+- hooks: array of {block, params} — use catalog building blocks instead of manual enforcement where possible (preferred for new configs)
 - permissions: object with allow (array of permission strings like "Bash(npm test*)") and deny (array)
+${catalogSection}
 
 Example 1 - Next.js app:
 version: "1.0"

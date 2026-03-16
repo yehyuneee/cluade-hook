@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { HookEntrySchema } from "../catalog/types.js";
 
 export const HarnessConfigSchema = z.object({
   version: z.literal("1.0").default("1.0"),
@@ -35,6 +36,9 @@ export const HarnessConfigSchema = z.object({
       command: z.string(),
     })).default([]),
   }),
+
+  // Catalog-based hooks (v2)
+  hooks: z.array(HookEntrySchema).default([]),
 
   // Permissions
   permissions: z.object({
