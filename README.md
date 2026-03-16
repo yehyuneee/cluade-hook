@@ -51,6 +51,10 @@ npx oh-my-harness init "TypeScript Next.js frontend with Python FastAPI backend"
 # Or install globally
 npm install -g oh-my-harness
 oh-my-harness init --preset nextjs fastapi
+
+# Short alias works too
+omh init "React app with TDD"
+omh catalog list
 ```
 
 ### What Gets Generated
