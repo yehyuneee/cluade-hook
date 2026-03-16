@@ -64,7 +64,7 @@ FILE_PATH="\${CLAUDE_TOOL_INPUT_FILE_PATH:-\${CLAUDE_TOOL_INPUT_PATH:-}}"
 [[ -z "$FILE_PATH" ]] && exit 0
 BLOCKED=(${patterns})
 for pattern in "\${BLOCKED[@]}"; do
-  if [[ "$FILE_PATH" == $pattern* ]] || [[ "$FILE_PATH" == *$pattern ]]; then
+  if [[ "$FILE_PATH" == *"/$pattern"* ]] || [[ "$FILE_PATH" == "$pattern"* ]]; then
     echo "{\\"decision\\": \\"block\\", \\"reason\\": \\"oh-my-harness: protected path $pattern\\"}"
     exit 0
   fi

@@ -1,11 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { MergedConfig } from "../core/preset-types.js";
-
-export interface HooksOutput {
-  hooksConfig: Record<string, Array<{ matcher: string; hooks: string[] }>>;
-  generatedFiles: string[];
-}
+import type { HooksOutput } from "./hooks.js";
 
 export interface GenerateSettingsOptions {
   projectDir: string;
