@@ -45,8 +45,8 @@ export interface BuildingBlock {
   id: string;
   name: string;
   description: string;
-  category: BuildingBlockCategory | string;
-  event: HookEvent | string;
+  category: BuildingBlockCategory;
+  event: HookEvent;
   matcher?: string;
   canBlock: boolean;
   params: ParamDefinition[];
@@ -71,8 +71,8 @@ export const BuildingBlockSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  category: z.string(),
-  event: z.string(),
+  category: z.enum(["git", "quality", "security", "notification", "formatting", "custom", "auto-fix", "automation", "file-protection"]),
+  event: z.enum(["PreToolUse", "PostToolUse", "PreCompact", "PostCompact", "Notification", "Stop", "SubagentStop", "PreBash", "PostBash", "PreEdit", "PostEdit", "PreRead", "PostRead", "PreWrite", "PostWrite", "SessionStart", "SessionEnd", "PreToolResult", "PostToolResult", "UserPromptSubmit"]),
   matcher: z.string().optional(),
   canBlock: z.boolean(),
   params: z.array(ParamDefinitionSchema),
