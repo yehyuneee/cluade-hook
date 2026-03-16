@@ -8,6 +8,8 @@ import type { PresetConfig } from "../../core/preset-types.js";
 import { parseNaturalLanguage, generateHarnessConfig } from "../../nl/parse-intent.js";
 import type { ClaudeRunner } from "../../nl/parse-intent.js";
 import { harnessToMergedConfig } from "../../core/harness-converter.js";
+import { harnessToMergedConfigV2 } from "../../core/harness-converter-v2.js";
+import { createDefaultRegistry } from "../../catalog/registry.js";
 
 export interface InitOptions {
   yes?: boolean;
@@ -146,7 +148,19 @@ async function initWithNL(
   }
 
   console.log(`Generating harness config for: "${description}"`);
-  const harness = await generateHarnessConfig(description, options.nlRunner);
+
+  // Load catalog blocks so LLM knows available building blocks
+  const registry = await createDefaultRegistry();
+  const catalogBlocks = registry.list().map((b) => ({
+    id: b.id,
+    name: b.name,
+    description: b.description,
+    event: b.event,
+    matcher: b.matcher,
+    params: b.params.map((p) => ({ name: p.name, type: p.type, description: p.description, required: p.required, default: p.default })),
+  }));
+
+  const harness = await generateHarnessConfig(description, options.nlRunner, catalogBlocks);
 
   // Show summary
   const stackNames = harness.project.stacks.map((s) => `${s.name} (${s.framework})`).join(", ");
@@ -167,9 +181,15 @@ async function initWithNL(
   const harnessYamlPath = path.join(projectDir, "harness.yaml");
   await fs.writeFile(harnessYamlPath, yaml.dump(harness, { lineWidth: 120 }), "utf-8");
 
-  // Convert to MergedConfig and generate derived files
-  const config = harnessToMergedConfig(harness);
-  const result = await generate({ projectDir, config });
+  // Convert to MergedConfig using v2 converter (handles catalog hooks)
+  const mergedV2 = await harnessToMergedConfigV2(harness);
+  if (mergedV2.catalogErrors && mergedV2.catalogErrors.length > 0) {
+    console.log("\nWarnings:");
+    for (const err of mergedV2.catalogErrors) {
+      console.log(`  ⚠ ${err}`);
+    }
+  }
+  const result = await generate({ projectDir, config: mergedV2 });
 
   // Save state
   await writeHarnessState(projectDir, {
