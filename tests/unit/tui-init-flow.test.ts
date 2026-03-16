@@ -1,0 +1,138 @@
+import { describe, it, expect } from "vitest";
+import { formatDepResults, formatConfigSummary } from "../../src/cli/tui/init-flow.js";
+import type { DepCheck } from "../../src/cli/deps-checker.js";
+import type { HarnessConfig } from "../../src/core/harness-schema.js";
+
+describe("formatDepResults", () => {
+  it("formats installed deps with checkmark and version", () => {
+    const deps: DepCheck[] = [
+      {
+        name: "git",
+        command: "git --version",
+        required: true,
+        purpose: "Version control",
+        installHint: "brew install git",
+        installed: true,
+        version: "2.43.0",
+      },
+    ];
+    const output = formatDepResults(deps);
+    expect(output).toContain("git");
+    expect(output).toContain("2.43.0");
+  });
+
+  it("formats missing required deps with error indicator", () => {
+    const deps: DepCheck[] = [
+      {
+        name: "jq",
+        command: "jq --version",
+        required: true,
+        purpose: "Parses tool input in hook scripts",
+        installHint: "brew install jq",
+        installed: false,
+      },
+    ];
+    const output = formatDepResults(deps);
+    expect(output).toContain("jq");
+    expect(output).toContain("missing");
+  });
+
+  it("formats missing optional deps with warning indicator", () => {
+    const deps: DepCheck[] = [
+      {
+        name: "claude",
+        command: "claude --version",
+        required: false,
+        purpose: "Enables natural language harness generation",
+        installHint: "npm install -g @anthropic-ai/claude-code",
+        installed: false,
+      },
+    ];
+    const output = formatDepResults(deps);
+    expect(output).toContain("claude");
+    expect(output).toContain("optional");
+  });
+
+  it("handles empty deps array", () => {
+    const output = formatDepResults([]);
+    expect(output).toBe("");
+  });
+});
+
+describe("formatConfigSummary", () => {
+  it("includes project name and stack info", () => {
+    const config: HarnessConfig = {
+      version: "1.0",
+      project: {
+        name: "my-app",
+        description: "A test project",
+        stacks: [{ name: "frontend", framework: "nextjs", language: "typescript" }],
+      },
+      rules: [{ id: "r1", title: "TDD Mandatory", content: "content", priority: 10 }],
+      enforcement: {
+        preCommit: ["npx vitest run"],
+        blockedPaths: ["dist/"],
+        blockedCommands: [],
+        postSave: [{ pattern: "*.ts", command: "eslint --fix" }],
+      },
+      permissions: { allow: [], deny: [] },
+    };
+    const output = formatConfigSummary(config);
+    expect(output).toContain("my-app");
+    expect(output).toContain("nextjs");
+    expect(output).toContain("typescript");
+  });
+
+  it("includes rules summary", () => {
+    const config: HarnessConfig = {
+      version: "1.0",
+      project: {
+        stacks: [{ name: "app", framework: "react", language: "typescript" }],
+      },
+      rules: [
+        { id: "r1", title: "TDD Mandatory", content: "content", priority: 10 },
+        { id: "r2", title: "TypeScript Rules", content: "content", priority: 20 },
+      ],
+      enforcement: { preCommit: [], blockedPaths: [], blockedCommands: [], postSave: [] },
+      permissions: { allow: [], deny: [] },
+    };
+    const output = formatConfigSummary(config);
+    expect(output).toContain("TDD Mandatory");
+    expect(output).toContain("TypeScript Rules");
+  });
+
+  it("includes enforcement summary", () => {
+    const config: HarnessConfig = {
+      version: "1.0",
+      project: {
+        stacks: [{ name: "app", framework: "react", language: "typescript" }],
+      },
+      rules: [],
+      enforcement: {
+        preCommit: ["npx vitest run", "npx tsc --noEmit"],
+        blockedPaths: ["dist/", "node_modules/"],
+        blockedCommands: [],
+        postSave: [{ pattern: "*.ts", command: "eslint --fix" }],
+      },
+      permissions: { allow: [], deny: [] },
+    };
+    const output = formatConfigSummary(config);
+    expect(output).toContain("npx vitest run");
+    expect(output).toContain("dist/");
+    expect(output).toContain("eslint --fix");
+  });
+
+  it("handles config with no enforcement", () => {
+    const config: HarnessConfig = {
+      version: "1.0",
+      project: {
+        stacks: [{ name: "app", framework: "react", language: "typescript" }],
+      },
+      rules: [],
+      enforcement: { preCommit: [], blockedPaths: [], blockedCommands: [], postSave: [] },
+      permissions: { allow: [], deny: [] },
+    };
+    const output = formatConfigSummary(config);
+    expect(typeof output).toBe("string");
+  });
+});
