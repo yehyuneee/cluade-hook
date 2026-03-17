@@ -60,8 +60,12 @@ export async function simulateHook(
       // stdout에서 {"decision":"block","reason":"..."} 찾기
       const jsonMatch = trimmed.match(/\{[^}]*"decision"\s*:\s*"block"[^}]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as { decision: string; reason?: string };
-        resolve({ decision: "block", reason: parsed.reason });
+        try {
+          const parsed = JSON.parse(jsonMatch[0]) as { decision: string; reason?: string };
+          resolve({ decision: "block", reason: parsed.reason });
+        } catch {
+          resolve({ decision: "allow" });
+        }
         return;
       }
       resolve({ decision: "allow" });

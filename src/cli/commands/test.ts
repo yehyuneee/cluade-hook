@@ -66,8 +66,13 @@ export async function testCommand(options: TestCommandOptions = {}): Promise<{
   let hooks: Awaited<ReturnType<typeof getRegisteredHooks>>;
   try {
     hooks = await getRegisteredHooks(projectDir);
-  } catch {
-    console.log(chalk.red("harness not initialized. Run `omh init` first."));
+  } catch (err) {
+    const error = err as NodeJS.ErrnoException;
+    if (error.code === "ENOENT") {
+      console.log(chalk.red("harness not initialized. Run `omh init` first."));
+    } else {
+      console.log(chalk.red(`Failed to read settings.json: ${error.message}`));
+    }
     process.exit(1);
   }
 
