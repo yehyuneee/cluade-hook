@@ -60,7 +60,7 @@ describe("generateClaudeMd()", () => {
     expect(content).toContain("<!-- oh-my-harness:start:managed-rules -->");
   });
 
-  it("removing a section from config causes it to disappear on regeneration", async () => {
+  it("removing a section from config does not remove existing managed sections on regeneration", async () => {
     const claudeMdPath = join(tmpDir, "CLAUDE.md");
 
     // First generate with two sections
