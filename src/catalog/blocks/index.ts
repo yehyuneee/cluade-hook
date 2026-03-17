@@ -11,6 +11,7 @@ import { formatOnSave } from "./format-on-save.js";
 import { autoPr } from "./auto-pr.js";
 import { secretFileGuard } from "./secret-file-guard.js";
 import { tddGuard } from "./tdd-guard.js";
+import { mergedBranchGuard } from "./merged-branch-guard.js";
 
 export const builtinBlocks: BuildingBlock[] = [
   branchGuard,
@@ -24,4 +25,5 @@ export const builtinBlocks: BuildingBlock[] = [
   autoPr,
   secretFileGuard,
   tddGuard,
+  mergedBranchGuard,
 ];
