@@ -118,14 +118,19 @@ hooks:
       typecheckCommand: "npx tsc --noEmit"
   - block: lint-on-save
     params:
-      lintCommand: "npx eslint --fix"
-      pattern: "*.{ts,tsx}"
+      filePattern: "*.{ts,tsx}"
+      command: "npx eslint --fix"
   - block: path-guard
     params:
-      blockedPaths: ".next/,node_modules/,*.min.js"
+      blockedPaths:
+        - ".next/"
+        - "node_modules/"
+        - "*.min.js"
   - block: command-guard
     params:
-      blockedCommands: "rm -rf /,sudo rm"
+      patterns:
+        - "rm -rf /"
+        - "sudo rm"
 permissions:
   allow:
     - "Bash(pnpm install*)"
@@ -162,14 +167,20 @@ hooks:
       testCommand: "uv run pytest"
   - block: lint-on-save
     params:
-      lintCommand: "ruff check --fix"
-      pattern: "*.py"
+      filePattern: "*.py"
+      command: "ruff check --fix"
   - block: path-guard
     params:
-      blockedPaths: "__pycache__/,.venv/,*.pyc"
+      blockedPaths:
+        - "__pycache__/"
+        - ".venv/"
+        - "*.pyc"
   - block: command-guard
     params:
-      blockedCommands: "rm -rf /,sudo rm,pip install"
+      patterns:
+        - "rm -rf /"
+        - "sudo rm"
+        - "pip install"
 permissions:
   allow:
     - "Bash(pytest*)"
