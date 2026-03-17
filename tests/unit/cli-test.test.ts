@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import yaml from "js-yaml";
 import { formatCategoryName, testCommand } from "../../src/cli/commands/test.js";
 
 describe("formatCategoryName", () => {
@@ -108,5 +109,94 @@ fi
 
     expect(result.results.length).toBeGreaterThan(0);
     expect(result.passed + result.failed).toBeGreaterThan(0);
+  });
+
+  it("generates block-based test cases when harness.yaml has hooks[] only (no enforcement)", async () => {
+    // settings.json with no registered hooks → empty results
+    const settings = { hooks: {} };
+    await fs.writeFile(
+      path.join(tmpDir, ".claude", "settings.json"),
+      JSON.stringify(settings),
+    );
+
+    // harness.yaml with only hooks[] (tdd-guard block, no enforcement)
+    const harnessYaml = yaml.dump({
+      version: "1.0",
+      project: { name: "test-project", stacks: [] },
+      rules: [],
+      enforcement: {},
+      hooks: [{ block: "tdd-guard", params: {} }],
+    });
+    await fs.writeFile(path.join(tmpDir, "harness.yaml"), harnessYaml);
+
+    // testCommand early-exits when no hooks in settings.json
+    const result = await testCommand({ projectDir: tmpDir });
+    // No hooks registered → returns empty
+    expect(result.results).toHaveLength(0);
+  });
+
+  it("generates block-based test cases merged with enforcement cases without duplicates", async () => {
+    const hooksDir = path.join(tmpDir, ".claude", "hooks");
+    await fs.mkdir(hooksDir, { recursive: true });
+
+    // A minimal script for lockfile-guard (catalog-based)
+    await fs.writeFile(
+      path.join(hooksDir, "catalog-lockfile-guard.sh"),
+      `#!/bin/bash\necho ""`,
+      { mode: 0o755 },
+    );
+    // A minimal script for tdd-guard (catalog-based)
+    await fs.writeFile(
+      path.join(hooksDir, "catalog-tdd-guard.sh"),
+      `#!/bin/bash\necho ""`,
+      { mode: 0o755 },
+    );
+
+    const settings = {
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: "Edit",
+            hooks: [{ type: "command", command: "bash .claude/hooks/catalog-lockfile-guard.sh" }],
+          },
+        ],
+      },
+    };
+    await fs.writeFile(
+      path.join(tmpDir, ".claude", "settings.json"),
+      JSON.stringify(settings),
+    );
+
+    // harness.yaml with both enforcement (lockfile handled via old path) and hooks[] (tdd-guard)
+    const harnessYaml = yaml.dump({
+      version: "1.0",
+      project: { name: "test-project", stacks: [] },
+      rules: [],
+      enforcement: { blockedPaths: [], blockedCommands: [] },
+      hooks: [
+        { block: "tdd-guard", params: {} },
+      ],
+    });
+    await fs.writeFile(path.join(tmpDir, "harness.yaml"), harnessYaml);
+
+    const result = await testCommand({ projectDir: tmpDir });
+
+    // tdd-guard block cases should be included
+    const categories = result.results.map((r) => r.testCase.category);
+    expect(categories).toContain("tdd-guard");
+  });
+});
+
+describe("formatCategoryName - additional categories", () => {
+  it("returns human-readable name for tdd-guard", () => {
+    expect(formatCategoryName("tdd-guard")).toBe("TDD Guard");
+  });
+
+  it("returns human-readable name for command-guard", () => {
+    expect(formatCategoryName("command-guard")).toBe("Command guards");
+  });
+
+  it("returns human-readable name for path-guard", () => {
+    expect(formatCategoryName("path-guard")).toBe("File guards");
   });
 });

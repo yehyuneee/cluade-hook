@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { HookEntry, BuildingBlock } from "../catalog/types.js";
+import { applyDefaults } from "../catalog/template-engine.js";
 
 export interface HookInput {
   tool_name: string;
@@ -18,6 +20,8 @@ export interface TestCase {
   hookScript: string;
   input: HookInput;
   expectation: "block" | "allow";
+  setup?: (projectDir: string) => Promise<void>;
+  teardown?: (projectDir: string) => Promise<void>;
 }
 
 export interface TestResult {
@@ -242,8 +246,12 @@ export async function runTestCase(
     };
   }
 
+  if (testCase.setup) await testCase.setup(projectDir);
+
   const result = await simulateHook(hookPath, testCase.input, projectDir);
   const passed = result.decision === testCase.expectation;
+
+  if (testCase.teardown) await testCase.teardown(projectDir);
 
   return {
     testCase,
@@ -252,4 +260,183 @@ export async function runTestCase(
     reason: result.reason,
     error: passed ? undefined : `expected ${testCase.expectation} but got ${result.decision}`,
   };
+}
+
+// 블록 기반 테스트 케이스 생성
+export function generateBlockTestCases(
+  hookEntries: HookEntry[],
+  blocks: BuildingBlock[],
+  currentBranch?: string,
+): TestCase[] {
+  const cases: TestCase[] = [];
+
+  for (const entry of hookEntries) {
+    const block = blocks.find((b) => b.id === entry.block);
+    if (!block) continue;
+    if (!block.canBlock) continue;
+
+    const params = applyDefaults(block, entry.params);
+    const hookScript = `.claude/hooks/catalog-${block.id}.sh`;
+
+    switch (block.id) {
+      case "path-guard": {
+        const blockedPaths = (params.blockedPaths as string[]) ?? [];
+        for (const blocked of blockedPaths) {
+          const testPath = blocked.endsWith("/")
+            ? `${blocked}test-file.js`
+            : blocked.startsWith("*")
+              ? `test${blocked.slice(1)}`
+              : blocked;
+          cases.push({
+            name: `${testPath} → BLOCKED`,
+            category: "path-guard",
+            hookScript,
+            input: { tool_name: "Edit", tool_input: { file_path: testPath } },
+            expectation: "block",
+          });
+        }
+        cases.push({
+          name: "src/index.ts → ALLOWED",
+          category: "path-guard",
+          hookScript,
+          input: { tool_name: "Edit", tool_input: { file_path: "src/index.ts" } },
+          expectation: "allow",
+        });
+        break;
+      }
+
+      case "command-guard": {
+        const patterns = (params.patterns as string[]) ?? [];
+        for (const pattern of patterns) {
+          cases.push({
+            name: `"${pattern}" → BLOCKED`,
+            category: "command-guard",
+            hookScript,
+            input: { tool_name: "Bash", tool_input: { command: pattern } },
+            expectation: "block",
+          });
+        }
+        cases.push({
+          name: '"npm test" → ALLOWED',
+          category: "command-guard",
+          hookScript,
+          input: { tool_name: "Bash", tool_input: { command: "npm test" } },
+          expectation: "allow",
+        });
+        break;
+      }
+
+      case "branch-guard": {
+        const isProtected = currentBranch === "main" || currentBranch === "master";
+        cases.push({
+          name: `git commit on ${currentBranch ?? "unknown"} → ${isProtected ? "BLOCKED" : "ALLOWED"}`,
+          category: "branch-guard",
+          hookScript,
+          input: { tool_name: "Bash", tool_input: { command: "git commit -m 'test'" } },
+          expectation: isProtected ? "block" : "allow",
+        });
+        break;
+      }
+
+      case "lockfile-guard": {
+        cases.push({
+          name: "package-lock.json → BLOCKED",
+          category: "lockfile-guard",
+          hookScript,
+          input: { tool_name: "Edit", tool_input: { file_path: "package-lock.json" } },
+          expectation: "block",
+        });
+        cases.push({
+          name: "package.json → ALLOWED",
+          category: "lockfile-guard",
+          hookScript,
+          input: { tool_name: "Edit", tool_input: { file_path: "package.json" } },
+          expectation: "allow",
+        });
+        break;
+      }
+
+      case "secret-file-guard": {
+        cases.push({
+          name: ".env → BLOCKED",
+          category: "secret-file-guard",
+          hookScript,
+          input: { tool_name: "Edit", tool_input: { file_path: ".env" } },
+          expectation: "block",
+        });
+        cases.push({
+          name: "src/app.ts → ALLOWED",
+          category: "secret-file-guard",
+          hookScript,
+          input: { tool_name: "Edit", tool_input: { file_path: "src/app.ts" } },
+          expectation: "allow",
+        });
+        break;
+      }
+
+      case "tdd-guard": {
+        const stateFile = ".claude/hooks/.state/edit-history.json";
+
+        // block case: source file without prior test edit
+        cases.push({
+          name: "src/event-logger.ts without test → BLOCKED",
+          category: "tdd-guard",
+          hookScript,
+          input: { tool_name: "Edit", tool_input: { file_path: "src/event-logger.ts" } },
+          expectation: "block",
+          setup: async (projectDir: string) => {
+            const historyPath = path.join(projectDir, stateFile);
+            try {
+              await fs.unlink(historyPath);
+            } catch {
+              // file may not exist
+            }
+          },
+          teardown: async (projectDir: string) => {
+            const historyPath = path.join(projectDir, stateFile);
+            try {
+              await fs.unlink(historyPath);
+            } catch {
+              // file may not exist
+            }
+          },
+        });
+
+        // allow case: test file edit
+        cases.push({
+          name: "tests/unit/event-logger.test.ts → ALLOWED",
+          category: "tdd-guard",
+          hookScript,
+          input: { tool_name: "Edit", tool_input: { file_path: "tests/unit/event-logger.test.ts" } },
+          expectation: "allow",
+          setup: async (projectDir: string) => {
+            const historyPath = path.join(projectDir, stateFile);
+            const stateDir = path.dirname(historyPath);
+            await fs.mkdir(stateDir, { recursive: true });
+            await fs.writeFile(historyPath, JSON.stringify({ edits: [] }));
+          },
+          teardown: async (projectDir: string) => {
+            const historyPath = path.join(projectDir, stateFile);
+            try {
+              await fs.unlink(historyPath);
+            } catch {
+              // file may not exist
+            }
+          },
+        });
+
+        // allow case: non-code file
+        cases.push({
+          name: "README.md → ALLOWED",
+          category: "tdd-guard",
+          hookScript,
+          input: { tool_name: "Edit", tool_input: { file_path: "README.md" } },
+          expectation: "allow",
+        });
+        break;
+      }
+    }
+  }
+
+  return cases;
 }

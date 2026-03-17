@@ -6,9 +6,11 @@ import {
   simulateHook,
   getRegisteredHooks,
   generateTestCases,
+  generateBlockTestCases,
   runTestCase,
 } from "../../src/cli/harness-tester.js";
 import type { TestCase } from "../../src/cli/harness-tester.js";
+import { builtinBlocks } from "../../src/catalog/blocks/index.js";
 
 // Helper: write a temp bash script and make it executable
 async function writeTempScript(dir: string, name: string, content: string): Promise<string> {
@@ -507,5 +509,91 @@ describe("runTestCase", () => {
 
     const result = await runTestCase(tmpDir, testCase);
     expect(result.testCase).toBe(testCase);
+  });
+
+  it("calls setup before and teardown after running the hook", async () => {
+    const scriptDir = path.join(tmpDir, ".claude", "hooks");
+    await fs.mkdir(scriptDir, { recursive: true });
+    const scriptPath = path.join(scriptDir, "allow-guard.sh");
+    await fs.writeFile(scriptPath, `#!/bin/bash\nexit 0`, { mode: 0o755 });
+
+    const callOrder: string[] = [];
+    const testCase: TestCase = {
+      name: "setup teardown test",
+      category: "path-guard",
+      hookScript: ".claude/hooks/allow-guard.sh",
+      input: { tool_name: "Edit", tool_input: { file_path: "src/index.ts" } },
+      expectation: "allow",
+      setup: async () => { callOrder.push("setup"); },
+      teardown: async () => { callOrder.push("teardown"); },
+    };
+
+    await runTestCase(tmpDir, testCase);
+    expect(callOrder).toEqual(["setup", "teardown"]);
+  });
+});
+
+describe("generateBlockTestCases", () => {
+  it("generates block/allow cases for path-guard with blockedPaths params", () => {
+    const entries = [{ block: "path-guard", params: { blockedPaths: ["dist/", "node_modules/"] } }];
+    const cases = generateBlockTestCases(entries, builtinBlocks);
+    expect(cases.filter(c => c.expectation === "block")).toHaveLength(2);
+    expect(cases.filter(c => c.expectation === "allow")).toHaveLength(1);
+    expect(cases[0].category).toBe("path-guard");
+  });
+
+  it("generates block/allow cases for command-guard with patterns params", () => {
+    const entries = [{ block: "command-guard", params: { patterns: ["rm -rf /", "sudo rm"] } }];
+    const cases = generateBlockTestCases(entries, builtinBlocks);
+    expect(cases.filter(c => c.expectation === "block")).toHaveLength(2);
+    expect(cases.filter(c => c.expectation === "allow")).toHaveLength(1);
+  });
+
+  it("generates branch-guard case based on currentBranch", () => {
+    const entries = [{ block: "branch-guard", params: {} }];
+    const onMain = generateBlockTestCases(entries, builtinBlocks, "main");
+    expect(onMain[0].expectation).toBe("block");
+    const onFeature = generateBlockTestCases(entries, builtinBlocks, "feat/test");
+    expect(onFeature[0].expectation).toBe("allow");
+  });
+
+  it("generates tdd-guard cases with setup/teardown", () => {
+    const entries = [{ block: "tdd-guard", params: {} }];
+    const cases = generateBlockTestCases(entries, builtinBlocks);
+    expect(cases.length).toBeGreaterThanOrEqual(3);
+    const blockCase = cases.find(c => c.expectation === "block");
+    expect(blockCase?.setup).toBeDefined();
+  });
+
+  it("generates lockfile-guard cases", () => {
+    const entries = [{ block: "lockfile-guard", params: {} }];
+    const cases = generateBlockTestCases(entries, builtinBlocks);
+    expect(cases.some(c => c.expectation === "block")).toBe(true);
+    expect(cases.some(c => c.expectation === "allow")).toBe(true);
+  });
+
+  it("generates secret-file-guard cases", () => {
+    const entries = [{ block: "secret-file-guard", params: {} }];
+    const cases = generateBlockTestCases(entries, builtinBlocks);
+    expect(cases.some(c => c.expectation === "block")).toBe(true);
+    expect(cases.some(c => c.expectation === "allow")).toBe(true);
+  });
+
+  it("skips canBlock=false blocks (lint-on-save)", () => {
+    const entries = [{ block: "lint-on-save", params: { filePattern: "*.ts", command: "eslint --fix" } }];
+    const cases = generateBlockTestCases(entries, builtinBlocks);
+    expect(cases.filter(c => c.expectation === "block")).toHaveLength(0);
+  });
+
+  it("skips unknown block ids", () => {
+    const entries = [{ block: "nonexistent-block", params: {} }];
+    const cases = generateBlockTestCases(entries, builtinBlocks);
+    expect(cases).toHaveLength(0);
+  });
+
+  it("applies defaults for blocks with optional params", () => {
+    const entries = [{ block: "tdd-guard", params: {} }];
+    const cases = generateBlockTestCases(entries, builtinBlocks);
+    expect(cases.length).toBeGreaterThan(0);
   });
 });
