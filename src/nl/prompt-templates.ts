@@ -118,7 +118,7 @@ hooks:
       typecheckCommand: "npx tsc --noEmit"
   - block: lint-on-save
     params:
-      filePattern: "*.{ts,tsx}"
+      filePattern: "*.ts"
       command: "npx eslint --fix"
   - block: path-guard
     params:

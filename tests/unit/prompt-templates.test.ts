@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildHarnessGenerationPrompt } from "../../src/nl/prompt-templates.js";
 import type { ProjectFacts } from "../../src/detector/types.js";
+// prompt-templates test file updated for brace expansion fix
 
 const fullFacts: ProjectFacts = {
   languages: ["typescript", "python"],
