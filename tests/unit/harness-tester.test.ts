@@ -531,6 +531,24 @@ describe("runTestCase", () => {
     await runTestCase(tmpDir, testCase);
     expect(callOrder).toEqual(["setup", "teardown"]);
   });
+
+  it("calls teardown even when hook simulation throws", async () => {
+    const callOrder: string[] = [];
+    const testCase: TestCase = {
+      name: "teardown on error test",
+      category: "path-guard",
+      hookScript: ".claude/hooks/nonexistent-will-fail.sh",
+      input: { tool_name: "Edit", tool_input: { file_path: "src/index.ts" } },
+      expectation: "allow",
+      setup: async () => { callOrder.push("setup"); },
+      teardown: async () => { callOrder.push("teardown"); },
+    };
+
+    // Script doesn't exist, but teardown should still be called
+    const result = await runTestCase(tmpDir, testCase);
+    expect(result.passed).toBe(false);
+    expect(callOrder).toContain("teardown");
+  });
 });
 
 describe("generateBlockTestCases", () => {

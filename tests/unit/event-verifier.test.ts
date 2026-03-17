@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { getEventSnapshot, verifyEventLogged } from "../../src/cli/event-verifier.js";
+// updated: strict hook name matching to prevent false positives
 import { appendEvent, type HookEvent } from "../../src/cli/event-logger.js";
 
 let tmpDir: string;

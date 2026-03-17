@@ -96,7 +96,8 @@ export async function checkHarnessCommands(
       /if\s+!\s+.+\s+>&?2/.test(content)
     ) {
       const commands = extractPreCommitCommands(content);
-      const category = scriptName.includes("typecheck") ? "commit-typecheck-gate" : "commit-test-gate";
+      const isTypecheck = scriptName.includes("typecheck") || commands.some((c) => /\btsc\b/.test(c));
+      const category = isTypecheck ? "commit-typecheck-gate" : "commit-test-gate";
       for (const cmd of commands) {
         const binary = extractExecutable(cmd);
         const executable = await checkCommandExecutable(binary);

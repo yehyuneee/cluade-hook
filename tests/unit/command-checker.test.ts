@@ -191,6 +191,25 @@ gh pr create --fill
     expect(typeof ghResult!.executable).toBe("boolean");
   });
 
+  it("categorizes typecheck command as commit-typecheck-gate by content", async () => {
+    await writeFile(
+      join(tmpDir, "custom-gate.sh"),
+      `#!/bin/bash
+if ! tsc --noEmit >&2 2>&1; then
+  exit 1
+fi
+`,
+      "utf-8",
+    );
+    const hooks = [
+      { event: "PreToolUse", matcher: "Bash", command: `bash custom-gate.sh` },
+    ];
+    const results = await checkHarnessCommands(hooks, tmpDir);
+    const tscResult = results.find((r) => r.command === "tsc --noEmit");
+    expect(tscResult).toBeDefined();
+    expect(tscResult!.category).toBe("commit-typecheck-gate");
+  });
+
   it("detects pre-commit gate by content even if filename differs", async () => {
     await writeFile(
       join(tmpDir, "harness-custom-gate.sh"),

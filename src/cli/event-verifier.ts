@@ -26,11 +26,12 @@ export async function verifyEventLogged(
     return { verified: false, warning: "No new events recorded in events.jsonl" };
   }
 
-  // hook 이름 매칭 (파일명 기반: catalog-command-guard.sh → command-guard 포함)
-  const matched = newEvents.find((e) => {
-    const hookBasename = e.hook.replace(/\.sh$/, "").replace(/^catalog-/, "");
-    return hookBasename.includes(expectedHook) || expectedHook.includes(hookBasename);
-  });
+  // hook 이름 매칭 (정규화 후 동등 비교: catalog-command-guard.sh → command-guard)
+  const normalize = (name: string): string =>
+    name.replace(/\.sh$/, "").replace(/^catalog-/, "").replace(/^harness-/, "");
+
+  const normalizedExpected = normalize(expectedHook);
+  const matched = newEvents.find((e) => normalize(e.hook) === normalizedExpected);
 
   if (!matched) {
     return { verified: false, warning: `No event found for hook "${expectedHook}"` };

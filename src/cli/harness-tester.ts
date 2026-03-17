@@ -238,6 +238,7 @@ export async function runTestCase(
   try {
     await fs.access(hookPath);
   } catch {
+    if (testCase.teardown) await testCase.teardown(projectDir);
     return {
       testCase,
       actual: "allow",
@@ -248,18 +249,20 @@ export async function runTestCase(
 
   if (testCase.setup) await testCase.setup(projectDir);
 
-  const result = await simulateHook(hookPath, testCase.input, projectDir);
-  const passed = result.decision === testCase.expectation;
+  try {
+    const result = await simulateHook(hookPath, testCase.input, projectDir);
+    const passed = result.decision === testCase.expectation;
 
-  if (testCase.teardown) await testCase.teardown(projectDir);
-
-  return {
-    testCase,
-    actual: result.decision,
-    passed,
-    reason: result.reason,
-    error: passed ? undefined : `expected ${testCase.expectation} but got ${result.decision}`,
-  };
+    return {
+      testCase,
+      actual: result.decision,
+      passed,
+      reason: result.reason,
+      error: passed ? undefined : `expected ${testCase.expectation} but got ${result.decision}`,
+    };
+  } finally {
+    if (testCase.teardown) await testCase.teardown(projectDir);
+  }
 }
 
 // 블록 기반 테스트 케이스 생성
