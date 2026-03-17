@@ -40,6 +40,7 @@ export async function readEvents(projectDir: string): Promise<HookEvent[]> {
       const parsed = JSON.parse(trimmed) as Record<string, unknown>;
       if (
         typeof parsed.ts === "string" &&
+        typeof parsed.event === "string" &&
         typeof parsed.hook === "string" &&
         (parsed.decision === "block" || parsed.decision === "allow")
       ) {

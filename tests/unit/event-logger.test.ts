@@ -131,9 +131,10 @@ describe("readEvents", () => {
     );
 
     const events = await readEvents(tmpDir);
-    // 필수 필드(ts, hook, decision) 있는 것만 반환
-    expect(events).toHaveLength(3);
-    expect(events.every(e => e.ts && e.hook && e.decision)).toBe(true);
+    // 필수 필드(ts, event, hook, decision) 모두 있는 것만 반환
+    // 2번째 줄은 event 필드 누락이므로 필터링됨
+    expect(events).toHaveLength(2);
+    expect(events.every(e => e.ts && e.event && e.hook && e.decision)).toBe(true);
   });
 });
 
