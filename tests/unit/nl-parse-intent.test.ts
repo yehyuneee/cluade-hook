@@ -271,4 +271,58 @@ describe("generateHarnessConfig", () => {
       /claude.*not found|install.*claude|claude.*unavailable/i,
     );
   });
+
+  it("retries when generated hooks contain invalid block ids", async () => {
+    const invalidYaml = yaml.dump({
+      version: "1.0",
+      project: { stacks: [{ name: "app", framework: "react", language: "typescript" }] },
+      rules: [],
+      hooks: [
+        { block: "branch-guard" },
+        { block: "nonexistent-block" },
+        { block: "made-up-guard" },
+      ],
+      permissions: { allow: [], deny: [] },
+    });
+    const fixedYaml = yaml.dump({
+      version: "1.0",
+      project: { stacks: [{ name: "app", framework: "react", language: "typescript" }] },
+      rules: [],
+      hooks: [{ block: "branch-guard" }],
+      permissions: { allow: [], deny: [] },
+    });
+    let callCount = 0;
+    const mockRunner: ClaudeRunner = async (prompt) => {
+      callCount++;
+      if (callCount === 1) return invalidYaml;
+      // Second call should receive correction prompt with invalid block ids
+      expect(prompt).toContain("nonexistent-block");
+      expect(prompt).toContain("made-up-guard");
+      return fixedYaml;
+    };
+    const catalogBlocks = [
+      { id: "branch-guard", description: "Blocks commits on merged branches", params: [] },
+    ];
+    const result = await generateHarnessConfig("my app", mockRunner, catalogBlocks);
+    expect(callCount).toBe(2);
+    expect(result.hooks).toHaveLength(1);
+    expect(result.hooks[0].block).toBe("branch-guard");
+  });
+
+  it("strips invalid blocks without retry when no catalogBlocks provided", async () => {
+    const yamlWithInvalid = yaml.dump({
+      version: "1.0",
+      project: { stacks: [{ name: "app", framework: "react", language: "typescript" }] },
+      rules: [],
+      hooks: [
+        { block: "branch-guard" },
+        { block: "fake-block" },
+      ],
+      permissions: { allow: [], deny: [] },
+    });
+    const mockRunner: ClaudeRunner = async () => yamlWithInvalid;
+    // Without catalogBlocks, no validation is possible — all hooks pass through
+    const result = await generateHarnessConfig("my app", mockRunner);
+    expect(result.hooks).toHaveLength(2);
+  });
 });
