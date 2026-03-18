@@ -31,6 +31,7 @@ export function App({ initialData, projectDir }: AppProps): React.JSX.Element {
   const reload = useCallback(async () => {
     const newData = await loadStatsData(projectDir, DATE_RANGES[dateRangeIndex]);
     setData(newData);
+    setSelectedBlockIndex(i => Math.min(i, Math.max(newData.blocks.length - 1, 0)));
   }, [projectDir, dateRangeIndex]);
 
   useInput((input, key) => {
@@ -52,14 +53,17 @@ export function App({ initialData, projectDir }: AppProps): React.JSX.Element {
     // Blocks 뷰에서 ↑/↓
     if (view === "blocks") {
       if (key.upArrow) setSelectedBlockIndex(i => Math.max(0, i - 1));
-      if (key.downArrow) setSelectedBlockIndex(i => Math.min(data.blocks.length - 1, i + 1));
+      if (key.downArrow) setSelectedBlockIndex(i => Math.min(Math.max(data.blocks.length - 1, 0), i + 1));
     }
 
     // d: 날짜 필터 순환
     if (input === "d") {
       const nextIndex = (dateRangeIndex + 1) % DATE_RANGES.length;
       setDateRangeIndex(nextIndex);
-      loadStatsData(projectDir, DATE_RANGES[nextIndex]).then(setData);
+      loadStatsData(projectDir, DATE_RANGES[nextIndex]).then(newData => {
+        setData(newData);
+        setSelectedBlockIndex(i => Math.min(i, Math.max(newData.blocks.length - 1, 0)));
+      });
     }
 
     // r: 새로고침
