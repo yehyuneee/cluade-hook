@@ -66,7 +66,11 @@ ${catalogBlocks
   })
   .join("\n")}
 
-IMPORTANT: Match the user's description to the most relevant blocks above. Use hooks for ALL needs.
+IMPORTANT RULES:
+- ONLY use block ids from the list above. Do NOT invent or create new block names.
+- Match the user's description to the most relevant blocks.
+- Keyword hints: "TDD" → use tdd-guard, "branch" → use branch-guard, "lint" → use lint-on-save, "format" → use format-on-save.
+- If a block does not exist in the list, do NOT include it in hooks.
 `
     : "";
 
