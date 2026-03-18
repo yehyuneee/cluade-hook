@@ -368,6 +368,24 @@ No code changes required. The registry auto-discovers it.
 
 ---
 
+## Contributing
+
+Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md) before submitting a PR.
+
+---
+
+## Support This Project
+
+oh-my-harness is free and open source. Here's how you can help:
+
+- **Star** — [Give a star](https://github.com/kyu1204/oh-my-harness) to help others discover the project
+- **Report Bugs** — [Open an issue](https://github.com/kyu1204/oh-my-harness/issues/new) when something doesn't work
+- **Request Features** — [Suggest ideas](https://github.com/kyu1204/oh-my-harness/issues/new) for new presets, hooks, or emitters
+- **Contribute** — Fix a bug, add a preset, or improve docs — PRs are always welcome
+- **Spread the Word** — Share oh-my-harness with your team or community
+
+---
+
 ## License
 
 MIT
