@@ -77,7 +77,7 @@ your-project/
     │   ├── catalog-path-guard.sh      # Protects build outputs
     │   ├── catalog-command-guard.sh   # Blocks dangerous commands
     │   ├── catalog-lint-on-save.sh    # Auto-lint on save
-    │   └── catalog-auto-pr.sh         # Auto-create PR after push
+    │   ├── catalog-auto-pr.sh         # Auto-create PR after push
     │   └── .state/
     │       ├── events.jsonl           # Hook event log (for analytics)
     │       └── edit-history.json      # TDD guard state
@@ -154,7 +154,7 @@ All enforcement is powered by **catalog blocks** — reusable, parameterized hoo
 | ✏️ `lint-on-save` | auto-fix | Auto-lint on file save |
 | 🎨 `format-on-save` | auto-fix | Auto-format on file save |
 | 🔀 `auto-pr` | automation | Auto-create PR after push |
-| 🧪 `tdd-guard` | quality | Blocks source edits unless test modified first |
+| 🧪 `tdd-guard` | quality | Blocks source edits unless test modified first (JS/TS) |
 
 ### Usage in `harness.yaml`
 

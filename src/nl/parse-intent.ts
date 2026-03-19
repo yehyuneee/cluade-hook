@@ -193,7 +193,15 @@ export async function generateHarnessConfig(
     if (invalidIds.length > 0) {
       // Feedback loop: retry with correction prompt (max 1 retry)
       const correctionPrompt = buildCorrectionPrompt(prompt, invalidIds, catalogBlocks);
-      return runAndParse(runner, correctionPrompt);
+      const retryConfig = await runAndParse(runner, correctionPrompt);
+
+      // Strip any remaining invalid blocks after retry
+      const stillInvalid = findInvalidBlockIds(retryConfig, catalogBlocks);
+      if (stillInvalid.length > 0) {
+        const validIds = new Set(catalogBlocks.map((b) => b.id));
+        retryConfig.hooks = (retryConfig.hooks ?? []).filter((h) => validIds.has(h.block));
+      }
+      return retryConfig;
     }
   }
 

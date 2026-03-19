@@ -309,6 +309,36 @@ describe("generateHarnessConfig", () => {
     expect(result.hooks[0].block).toBe("branch-guard");
   });
 
+  it("strips remaining invalid blocks after retry", async () => {
+    const invalidYaml = yaml.dump({
+      version: "1.0",
+      project: { stacks: [{ name: "app", framework: "react", language: "typescript" }] },
+      rules: [],
+      hooks: [{ block: "branch-guard" }, { block: "bad-block" }],
+      permissions: { allow: [], deny: [] },
+    });
+    // Retry also returns invalid blocks — they should be stripped
+    const stillInvalidYaml = yaml.dump({
+      version: "1.0",
+      project: { stacks: [{ name: "app", framework: "react", language: "typescript" }] },
+      rules: [],
+      hooks: [{ block: "branch-guard" }, { block: "still-bad" }],
+      permissions: { allow: [], deny: [] },
+    });
+    let callCount = 0;
+    const mockRunner: ClaudeRunner = async () => {
+      callCount++;
+      if (callCount === 1) return invalidYaml;
+      return stillInvalidYaml;
+    };
+    const catalogBlocks = [
+      { id: "branch-guard", description: "test", params: [] },
+    ];
+    const result = await generateHarnessConfig("my app", mockRunner, catalogBlocks);
+    expect(result.hooks).toHaveLength(1);
+    expect(result.hooks[0].block).toBe("branch-guard");
+  });
+
   it("strips invalid blocks without retry when no catalogBlocks provided", async () => {
     const yamlWithInvalid = yaml.dump({
       version: "1.0",
