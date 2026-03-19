@@ -64,7 +64,7 @@ omh stats         # TUI analytics dashboard
 
 ### 📁 What Gets Generated
 
-```
+```text
 your-project/
 ├── CLAUDE.md                          # TDD rules, coding standards
 ├── harness.yaml                       # Your harness config (source of truth)
@@ -88,7 +88,7 @@ your-project/
 
 ## ⚙️ How It Works
 
-```
+```text
                     ┌─────────────────────┐
   "React + FastAPI  │                     │
    TDD enforced"    │   claude -p (NL)    │
@@ -214,7 +214,7 @@ omh stats                                 # TUI analytics dashboard
 
 ### 🩺 `omh doctor`
 
-```
+```text
 oh-my-harness: running health checks...
   ✓ .claude/oh-my-harness.json found
   ✓ CLAUDE.md exists with intact markers
@@ -227,7 +227,7 @@ oh-my-harness: all checks passed
 
 Simulates hook inputs to verify block/allow behavior without entering Claude Code:
 
-```
+```text
 ┌  omh test  Harness dry-run verification
 │
 ◇  Branch guard
@@ -254,7 +254,7 @@ Simulates hook inputs to verify block/allow behavior without entering Claude Cod
 
 Interactive dashboard powered by [ink](https://github.com/vadimdemedes/ink) with 3 views:
 
-```
+```text
  [1] Overview   [2] Timeline   [3] Blocks          d:filter r:reload q:quit
 
  Active: 8  Events: 1213  Block rate: 2%
@@ -293,7 +293,7 @@ This powers `omh test` live verification and `omh stats` analytics.
 
 ## 🏗️ Architecture
 
-```
+```text
 oh-my-harness/
 ├── bin/                    # CLI entry point
 ├── src/
