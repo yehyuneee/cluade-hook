@@ -182,4 +182,20 @@ describe("buildHarnessGenerationPrompt with projectFacts", () => {
     expect(prompt).toContain("block: custom-gate-asdfgh");
     expect(prompt).toContain("customCmd (required)");
   });
+
+  it("instructs LLM to only use listed block ids, not invent new ones", () => {
+    const blocks = [
+      { id: "branch-guard", description: "Blocks commits on merged branches", params: [] },
+    ];
+    const prompt = buildHarnessGenerationPrompt("my app", blocks);
+    expect(prompt).toMatch(/do not invent|do not create|only use.*listed|only.*available/i);
+  });
+
+  it("includes keyword-to-block mapping hints", () => {
+    const blocks = [
+      { id: "tdd-guard", description: "Blocks source edits unless test modified first", params: [] },
+    ];
+    const prompt = buildHarnessGenerationPrompt("TDD project", blocks);
+    expect(prompt).toMatch(/tdd.*tdd-guard|tdd-guard.*tdd/i);
+  });
 });

@@ -118,14 +118,35 @@ function extractYaml(text: string): string {
   return text.trim();
 }
 
-export async function generateHarnessConfig(
-  description: string,
-  runner: ClaudeRunner = defaultClaudeRunner,
-  catalogBlocks?: CatalogBlockInfo[],
-  projectFacts?: ProjectFacts,
-): Promise<HarnessConfig> {
-  const prompt = buildHarnessGenerationPrompt(description, catalogBlocks, projectFacts);
+function findInvalidBlockIds(
+  config: HarnessConfig,
+  catalogBlocks: CatalogBlockInfo[],
+): string[] {
+  const validIds = new Set(catalogBlocks.map((b) => b.id));
+  return (config.hooks ?? [])
+    .map((h) => h.block)
+    .filter((id) => !validIds.has(id));
+}
 
+function buildCorrectionPrompt(
+  originalPrompt: string,
+  invalidIds: string[],
+  catalogBlocks: CatalogBlockInfo[],
+): string {
+  const validList = catalogBlocks.map((b) => b.id).join(", ");
+  return `${originalPrompt}
+
+CORRECTION NEEDED: The previous output contained invalid block ids that do not exist in the catalog: ${invalidIds.join(", ")}
+
+Valid block ids are ONLY: ${validList}
+
+Remove or replace the invalid blocks with valid ones from the list above. Return ONLY valid YAML.`;
+}
+
+async function runAndParse(
+  runner: ClaudeRunner,
+  prompt: string,
+): Promise<HarnessConfig> {
   let stdout: string;
   try {
     stdout = await runner(prompt);
@@ -155,4 +176,34 @@ export async function generateHarnessConfig(
   }
 
   return result.data;
+}
+
+export async function generateHarnessConfig(
+  description: string,
+  runner: ClaudeRunner = defaultClaudeRunner,
+  catalogBlocks?: CatalogBlockInfo[],
+  projectFacts?: ProjectFacts,
+): Promise<HarnessConfig> {
+  const prompt = buildHarnessGenerationPrompt(description, catalogBlocks, projectFacts);
+  const config = await runAndParse(runner, prompt);
+
+  // Validate block ids if catalog is provided
+  if (catalogBlocks && catalogBlocks.length > 0) {
+    const invalidIds = findInvalidBlockIds(config, catalogBlocks);
+    if (invalidIds.length > 0) {
+      // Feedback loop: retry with correction prompt (max 1 retry)
+      const correctionPrompt = buildCorrectionPrompt(prompt, invalidIds, catalogBlocks);
+      const retryConfig = await runAndParse(runner, correctionPrompt);
+
+      // Strip any remaining invalid blocks after retry
+      const stillInvalid = findInvalidBlockIds(retryConfig, catalogBlocks);
+      if (stillInvalid.length > 0) {
+        const validIds = new Set(catalogBlocks.map((b) => b.id));
+        retryConfig.hooks = (retryConfig.hooks ?? []).filter((h) => validIds.has(h.block));
+      }
+      return retryConfig;
+    }
+  }
+
+  return config;
 }
