@@ -119,20 +119,24 @@ export const pythonDetector: Detector = {
     // pyproject.toml [tool.isort] detection
     if (pyprojectContent?.includes("[tool.isort]")) {
       isPython = true;
+      const prefix = isPoetry ? "poetry run " : isPipenv ? "pipenv run " : "";
+      lintCommands.push(`${prefix}isort --check-only .`);
       if (!detectedFiles.includes("pyproject.toml")) detectedFiles.push("pyproject.toml");
     }
 
     // pytest.ini detection
     if (await fileExists(pytestIniPath)) {
       isPython = true;
-      testCommands.push(isPoetry ? "poetry run pytest" : "pytest");
+      const prefix = isPoetry ? "poetry run " : isPipenv ? "pipenv run " : "";
+      testCommands.push(`${prefix}pytest`);
       detectedFiles.push("pytest.ini");
     }
 
     // conftest.py detection
     if (await fileExists(conftestPath)) {
       isPython = true;
-      testCommands.push(isPoetry ? "poetry run pytest" : "pytest");
+      const prefix = isPoetry ? "poetry run " : isPipenv ? "pipenv run " : "";
+      testCommands.push(`${prefix}pytest`);
       detectedFiles.push("conftest.py");
     }
 
@@ -140,42 +144,48 @@ export const pythonDetector: Detector = {
     const setupCfgContent = await readTextFile(setupCfgPath);
     if (setupCfgContent?.includes("[tool:pytest]")) {
       isPython = true;
-      testCommands.push(isPoetry ? "poetry run pytest" : "pytest");
+      const prefix = isPoetry ? "poetry run " : isPipenv ? "pipenv run " : "";
+      testCommands.push(`${prefix}pytest`);
       detectedFiles.push("setup.cfg");
     }
 
     // .flake8 detection
     if (await fileExists(flake8Path)) {
       isPython = true;
-      lintCommands.push(isPoetry ? "poetry run flake8" : "flake8");
+      const prefix = isPoetry ? "poetry run " : isPipenv ? "pipenv run " : "";
+      lintCommands.push(`${prefix}flake8`);
       detectedFiles.push(".flake8");
     }
 
     // ruff.toml detection
     if (await fileExists(ruffTomlPath)) {
       isPython = true;
-      lintCommands.push(isPoetry ? "poetry run ruff check" : "ruff check");
+      const prefix = isPoetry ? "poetry run " : isPipenv ? "pipenv run " : "";
+      lintCommands.push(`${prefix}ruff check`);
       detectedFiles.push("ruff.toml");
     }
 
     // pyproject.toml [tool.ruff] detection
     if (pyprojectContent?.includes("[tool.ruff]")) {
       isPython = true;
-      lintCommands.push(isPoetry ? "poetry run ruff check" : "ruff check");
+      const prefix = isPoetry ? "poetry run " : isPipenv ? "pipenv run " : "";
+      lintCommands.push(`${prefix}ruff check`);
       if (!detectedFiles.includes("pyproject.toml")) detectedFiles.push("pyproject.toml");
     }
 
     // mypy.ini detection
     if (await fileExists(mypyIniPath)) {
       isPython = true;
-      typecheckCommands.push(isPoetry ? "poetry run mypy ." : "mypy .");
+      const prefix = isPoetry ? "poetry run " : isPipenv ? "pipenv run " : "";
+      typecheckCommands.push(`${prefix}mypy .`);
       detectedFiles.push("mypy.ini");
     }
 
     // pyproject.toml [tool.mypy] detection
     if (pyprojectContent?.includes("[tool.mypy]")) {
       isPython = true;
-      typecheckCommands.push(isPoetry ? "poetry run mypy ." : "mypy .");
+      const prefix = isPoetry ? "poetry run " : isPipenv ? "pipenv run " : "";
+      typecheckCommands.push(`${prefix}mypy .`);
       if (!detectedFiles.includes("pyproject.toml")) detectedFiles.push("pyproject.toml");
     }
 

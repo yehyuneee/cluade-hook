@@ -300,17 +300,32 @@ describe("pythonDetector", () => {
     expect(result.languages).toContain("python");
   });
 
-  it("detects [tool.black] in pyproject.toml", async () => {
+  it("detects [tool.black] in pyproject.toml with exact lint command", async () => {
     await writeFile(tmpDir, "pyproject.toml", '[tool.black]\nline-length = 120\n');
     const result = await pythonDetector.detect(tmpDir);
     expect(result.languages).toContain("python");
-    expect(result.lintCommands).toEqual(expect.arrayContaining([expect.stringContaining("black")]));
+    expect(result.lintCommands).toContain("black --check .");
   });
 
-  it("detects [tool.isort] in pyproject.toml", async () => {
+  it("detects [tool.isort] in pyproject.toml with lint command", async () => {
     await writeFile(tmpDir, "pyproject.toml", '[tool.isort]\nprofile = "black"\n');
     const result = await pythonDetector.detect(tmpDir);
     expect(result.languages).toContain("python");
+    expect(result.lintCommands).toContain("isort --check-only .");
+  });
+
+  it("uses pipenv run prefix for pytest when Pipfile exists", async () => {
+    await writeFile(tmpDir, "Pipfile", '[packages]\n');
+    await writeFile(tmpDir, "pytest.ini", "[pytest]\n");
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.testCommands).toContain("pipenv run pytest");
+  });
+
+  it("uses pipenv run prefix for ruff when Pipfile exists", async () => {
+    await writeFile(tmpDir, "Pipfile", '[packages]\n');
+    await writeFile(tmpDir, "ruff.toml", "[lint]\n");
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.lintCommands).toContain("pipenv run ruff check");
   });
 
   it("has name 'python'", () => {
