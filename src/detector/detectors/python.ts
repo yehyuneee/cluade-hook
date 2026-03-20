@@ -36,11 +36,16 @@ export const pythonDetector: Detector = {
 
     let isPython = false;
     let isPoetry = false;
+    let isPipenv = false;
+    const frameworks: string[] = [];
 
     const pyprojectPath = path.join(projectDir, "pyproject.toml");
     const uvLockPath = path.join(projectDir, "uv.lock");
     const poetryLockPath = path.join(projectDir, "poetry.lock");
     const requirementsTxtPath = path.join(projectDir, "requirements.txt");
+    const pipfilePath = path.join(projectDir, "Pipfile");
+    const managePyPath = path.join(projectDir, "manage.py");
+    const pythonVersionPath = path.join(projectDir, ".python-version");
     const pytestIniPath = path.join(projectDir, "pytest.ini");
     const conftestPath = path.join(projectDir, "conftest.py");
     const setupCfgPath = path.join(projectDir, "setup.cfg");
@@ -80,6 +85,41 @@ export const pythonDetector: Detector = {
       isPython = true;
       packageManagers.push("pip");
       detectedFiles.push("requirements.txt");
+    }
+
+    // Pipfile / pipenv detection
+    if (await fileExists(pipfilePath)) {
+      isPython = true;
+      isPipenv = true;
+      packageManagers.push("pipenv");
+      detectedFiles.push("Pipfile");
+    }
+
+    // manage.py → Django detection
+    if (await fileExists(managePyPath)) {
+      isPython = true;
+      frameworks.push("django");
+      detectedFiles.push("manage.py");
+    }
+
+    // .python-version detection
+    if (await fileExists(pythonVersionPath)) {
+      isPython = true;
+      detectedFiles.push(".python-version");
+    }
+
+    // pyproject.toml [tool.black] detection
+    if (pyprojectContent?.includes("[tool.black]")) {
+      isPython = true;
+      const prefix = isPoetry ? "poetry run " : isPipenv ? "pipenv run " : "";
+      lintCommands.push(`${prefix}black --check .`);
+      if (!detectedFiles.includes("pyproject.toml")) detectedFiles.push("pyproject.toml");
+    }
+
+    // pyproject.toml [tool.isort] detection
+    if (pyprojectContent?.includes("[tool.isort]")) {
+      isPython = true;
+      if (!detectedFiles.includes("pyproject.toml")) detectedFiles.push("pyproject.toml");
     }
 
     // pytest.ini detection
@@ -148,6 +188,7 @@ export const pythonDetector: Detector = {
 
     return {
       languages: dedupe(languages),
+      frameworks: dedupe(frameworks),
       packageManagers: dedupe(packageManagers),
       testCommands: dedupe(testCommands),
       lintCommands: dedupe(lintCommands),

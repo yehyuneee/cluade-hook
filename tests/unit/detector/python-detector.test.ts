@@ -280,6 +280,39 @@ describe("pythonDetector", () => {
     expect(testCmds.filter((c) => c === "pytest")).toHaveLength(1);
   });
 
+  it("detects Pipfile as pipenv project", async () => {
+    await writeFile(tmpDir, "Pipfile", '[packages]\ndjango = "*"\n');
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.languages).toContain("python");
+    expect(result.packageManagers).toContain("pipenv");
+  });
+
+  it("detects manage.py as Django project", async () => {
+    await writeFile(tmpDir, "manage.py", '#!/usr/bin/env python\nimport django\n');
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.languages).toContain("python");
+    expect(result.frameworks).toContain("django");
+  });
+
+  it("detects .python-version as Python project", async () => {
+    await writeFile(tmpDir, ".python-version", "3.10.13\n");
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.languages).toContain("python");
+  });
+
+  it("detects [tool.black] in pyproject.toml", async () => {
+    await writeFile(tmpDir, "pyproject.toml", '[tool.black]\nline-length = 120\n');
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.languages).toContain("python");
+    expect(result.lintCommands).toEqual(expect.arrayContaining([expect.stringContaining("black")]));
+  });
+
+  it("detects [tool.isort] in pyproject.toml", async () => {
+    await writeFile(tmpDir, "pyproject.toml", '[tool.isort]\nprofile = "black"\n');
+    const result = await pythonDetector.detect(tmpDir);
+    expect(result.languages).toContain("python");
+  });
+
   it("has name 'python'", () => {
     expect(pythonDetector.name).toBe("python");
   });
