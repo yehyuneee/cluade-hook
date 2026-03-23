@@ -144,6 +144,20 @@ describe("built-in preset validation", () => {
     expect(preset.settings?.permissions?.deny?.length).toBeGreaterThan(0);
   });
 
+  it("HooksConfigSchema supports extended event types", async () => {
+    const { HooksConfigSchema } = await import("../../src/core/preset-types.js");
+    const parsed = HooksConfigSchema.parse({
+      preToolUse: [],
+      postToolUse: [],
+      sessionStart: [],
+      notification: [],
+      configChange: [],
+    });
+    expect(parsed.sessionStart).toEqual([]);
+    expect(parsed.notification).toEqual([]);
+    expect(parsed.configChange).toEqual([]);
+  });
+
   it("nextjs has expected variables", async () => {
     const preset = await loadPreset(path.join(PRESETS_DIR, "nextjs"));
     expect(preset.variables?.framework).toBe("nextjs");

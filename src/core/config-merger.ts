@@ -5,6 +5,9 @@ export function mergePresets(presets: PresetConfig[]): MergedConfig {
   const sectionsMap = new Map<string, ClaudeMdSection>();
   const preToolUseMap = new Map<string, HookDefinition>();
   const postToolUseMap = new Map<string, HookDefinition>();
+  const sessionStartMap = new Map<string, HookDefinition>();
+  const notificationMap = new Map<string, HookDefinition>();
+  const configChangeMap = new Map<string, HookDefinition>();
   const allowSet = new Set<string>();
   const denySet = new Set<string>();
   const presetNames: string[] = [];
@@ -35,6 +38,21 @@ export function mergePresets(presets: PresetConfig[]): MergedConfig {
         postToolUseMap.set(hook.id, hook);
       }
     }
+    if (preset.hooks?.sessionStart) {
+      for (const hook of preset.hooks.sessionStart) {
+        sessionStartMap.set(hook.id, hook);
+      }
+    }
+    if (preset.hooks?.notification) {
+      for (const hook of preset.hooks.notification) {
+        notificationMap.set(hook.id, hook);
+      }
+    }
+    if (preset.hooks?.configChange) {
+      for (const hook of preset.hooks.configChange) {
+        configChangeMap.set(hook.id, hook);
+      }
+    }
 
     // Merge settings (accumulate)
     if (preset.settings?.permissions?.allow) {
@@ -55,6 +73,9 @@ export function mergePresets(presets: PresetConfig[]): MergedConfig {
     hooks: {
       preToolUse: Array.from(preToolUseMap.values()),
       postToolUse: Array.from(postToolUseMap.values()),
+      sessionStart: Array.from(sessionStartMap.values()),
+      notification: Array.from(notificationMap.values()),
+      configChange: Array.from(configChangeMap.values()),
     },
     settings: {
       permissions: {

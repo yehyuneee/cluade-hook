@@ -224,4 +224,109 @@ describe("harnessToMergedConfigV2", () => {
 
     expect(result.catalogErrors).toBeUndefined();
   });
+
+  it("routes SessionStart events to sessionStart hooks", async () => {
+    const registry = new CatalogRegistry();
+    registry.register(
+      makeBlock({
+        id: "compact-context",
+        event: "SessionStart",
+        matcher: "compact",
+        category: "automation",
+        template: "#!/bin/bash\necho context",
+      }),
+    );
+
+    const config: HarnessConfig = {
+      ...baseHarness,
+      hooks: [{ block: "compact-context", params: {} }],
+    };
+
+    const result = await harnessToMergedConfigV2(config, registry);
+
+    expect(result.catalogErrors).toBeUndefined();
+    const hook = result.hooks.sessionStart?.find((h) => h.id === "catalog-compact-context");
+    expect(hook).toBeDefined();
+    expect(hook!.matcher).toBe("compact");
+  });
+
+  it("routes Notification events to notification hooks", async () => {
+    const registry = new CatalogRegistry();
+    registry.register(
+      makeBlock({
+        id: "desktop-notify",
+        event: "Notification",
+        matcher: "",
+        category: "notification",
+        template: "#!/bin/bash\necho notify",
+      }),
+    );
+
+    const config: HarnessConfig = {
+      ...baseHarness,
+      hooks: [{ block: "desktop-notify", params: {} }],
+    };
+
+    const result = await harnessToMergedConfigV2(config, registry);
+
+    expect(result.catalogErrors).toBeUndefined();
+    const hook = result.hooks.notification?.find((h) => h.id === "catalog-desktop-notify");
+    expect(hook).toBeDefined();
+  });
+
+  it("routes ConfigChange events to configChange hooks", async () => {
+    const registry = new CatalogRegistry();
+    registry.register(
+      makeBlock({
+        id: "config-audit",
+        event: "ConfigChange",
+        matcher: "",
+        category: "audit",
+        template: "#!/bin/bash\necho audit",
+      }),
+    );
+
+    const config: HarnessConfig = {
+      ...baseHarness,
+      hooks: [{ block: "config-audit", params: {} }],
+    };
+
+    const result = await harnessToMergedConfigV2(config, registry);
+
+    expect(result.catalogErrors).toBeUndefined();
+    const hook = result.hooks.configChange?.find((h) => h.id === "catalog-config-audit");
+    expect(hook).toBeDefined();
+  });
+
+  it("allows duplicate block ids with different params (multi-instance)", async () => {
+    const registry = new CatalogRegistry();
+    registry.register(
+      makeBlock({
+        id: "lint-on-save",
+        event: "PostToolUse",
+        matcher: "Edit|Write",
+        template: "#!/bin/bash\necho {{{command}}}",
+        params: [
+          { name: "filePattern", type: "string", description: "glob", required: true },
+          { name: "command", type: "string", description: "cmd", required: true },
+        ],
+      }),
+    );
+
+    const config: HarnessConfig = {
+      ...baseHarness,
+      hooks: [
+        { block: "lint-on-save", params: { filePattern: "*.ts", command: "eslint" } },
+        { block: "lint-on-save", params: { filePattern: "*.py", command: "ruff" } },
+      ],
+    };
+
+    const result = await harnessToMergedConfigV2(config, registry);
+
+    // Both instances should exist, not just the first
+    const lintHooks = result.hooks.postToolUse.filter((h) => h.id.includes("lint-on-save"));
+    expect(lintHooks.length).toBe(2);
+    // No duplicate error
+    expect(result.catalogErrors?.some((e) => e.includes("Duplicate"))).toBeFalsy();
+  });
 });

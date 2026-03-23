@@ -23,7 +23,7 @@ export async function convertHookEntries(
   const hooksConfig: Record<string, HookConfigEntry[]> = {};
   const scripts: Map<string, string> = new Map();
   const errors: string[] = [];
-  const seenBlockIds = new Set<string>();
+  const blockInstanceCount = new Map<string, number>();
 
   for (const entry of entries) {
     const block = registry.get(entry.block);
@@ -40,12 +40,6 @@ export async function convertHookEntries(
       continue;
     }
 
-    if (seenBlockIds.has(entry.block)) {
-      errors.push(`Duplicate block id skipped: "${entry.block}"`);
-      continue;
-    }
-    seenBlockIds.add(entry.block);
-
     let scriptContent: string;
     try {
       scriptContent = renderTemplate(block.template, resolvedParams);
@@ -53,7 +47,11 @@ export async function convertHookEntries(
       errors.push(`Failed to render block "${entry.block}": ${(err as Error).message}`);
       continue;
     }
-    const scriptName = `${entry.block}.sh`;
+
+    // Support multiple instances of the same block with different params
+    const count = blockInstanceCount.get(entry.block) ?? 0;
+    blockInstanceCount.set(entry.block, count + 1);
+    const scriptName = count === 0 ? `${entry.block}.sh` : `${entry.block}-${count}.sh`;
     const scriptPath = path.join(projectDir, ".claude", "hooks", scriptName);
     scripts.set(scriptPath, scriptContent);
 

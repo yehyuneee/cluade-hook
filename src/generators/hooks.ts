@@ -55,10 +55,17 @@ export async function generateHooks(options: GenerateHooksOptions): Promise<Hook
   const { projectDir, config } = options;
   const hooksDir = join(projectDir, ".claude/hooks");
 
-  const allHooks = [
-    ...config.hooks.preToolUse.map((h) => ({ ...h, event: "PreToolUse" as const })),
-    ...config.hooks.postToolUse.map((h) => ({ ...h, event: "PostToolUse" as const })),
+  const eventMap: Array<[string, typeof config.hooks.preToolUse]> = [
+    ["PreToolUse", config.hooks.preToolUse],
+    ["PostToolUse", config.hooks.postToolUse],
+    ["SessionStart", config.hooks.sessionStart ?? []],
+    ["Notification", config.hooks.notification ?? []],
+    ["ConfigChange", config.hooks.configChange ?? []],
   ];
+
+  const allHooks = eventMap.flatMap(([event, hooks]) =>
+    hooks.map((h) => ({ ...h, event })),
+  );
 
   if (allHooks.length === 0) {
     return { hooksConfig: {}, generatedFiles: [] };
