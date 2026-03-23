@@ -55,10 +55,17 @@ export async function generateHooks(options: GenerateHooksOptions): Promise<Hook
   const { projectDir, config } = options;
   const hooksDir = join(projectDir, ".claude/hooks");
 
-  const allHooks = [
-    ...config.hooks.preToolUse.map((h) => ({ ...h, event: "PreToolUse" as const })),
-    ...config.hooks.postToolUse.map((h) => ({ ...h, event: "PostToolUse" as const })),
+  const eventMap: Array<[string, typeof config.hooks.preToolUse]> = [
+    ["PreToolUse", config.hooks.preToolUse],
+    ["PostToolUse", config.hooks.postToolUse],
+    ["SessionStart", config.hooks.sessionStart ?? []],
+    ["Notification", config.hooks.notification ?? []],
+    ["ConfigChange", config.hooks.configChange ?? []],
   ];
+
+  const allHooks = eventMap.flatMap(([event, hooks]) =>
+    hooks.map((h) => ({ ...h, event })),
+  );
 
   if (allHooks.length === 0) {
     return { hooksConfig: {}, generatedFiles: [] };
@@ -68,6 +75,7 @@ export async function generateHooks(options: GenerateHooksOptions): Promise<Hook
 
   const generatedFiles: string[] = [];
   const hooksConfig: Record<string, Array<{ matcher: string; hooks: HookCommand[] }>> = {};
+  const usedScriptNames = new Set<string>();
 
   for (const hook of allHooks) {
     if (!hook.inline) {
@@ -75,7 +83,14 @@ export async function generateHooks(options: GenerateHooksOptions): Promise<Hook
     }
 
     const safeId = hook.id.replace(/[^a-zA-Z0-9_-]/g, "");
-    const scriptName = `${safeId}.sh`;
+    let scriptName = `${safeId}.sh`;
+    // Prevent collisions when different events share the same hook.id
+    if (usedScriptNames.has(scriptName)) {
+      const safeEvent = hook.event.replace(/[^a-zA-Z0-9_-]/g, "").toLowerCase();
+      scriptName = `${safeEvent}-${safeId}.sh`;
+    }
+    usedScriptNames.add(scriptName);
+
     const scriptPath = join(hooksDir, scriptName);
     const wrappedScript = wrapWithLogger(hook.inline, hook.event);
     await writeFile(scriptPath, wrappedScript, "utf8");
@@ -84,7 +99,7 @@ export async function generateHooks(options: GenerateHooksOptions): Promise<Hook
 
     const entry = {
       matcher: hook.matcher,
-      hooks: [{ type: "command" as const, command: `bash .claude/hooks/${safeId}.sh` }],
+      hooks: [{ type: "command" as const, command: `bash .claude/hooks/${scriptName}` }],
     };
     if (!hooksConfig[hook.event]) {
       hooksConfig[hook.event] = [];

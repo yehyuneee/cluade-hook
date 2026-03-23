@@ -122,4 +122,51 @@ describe("config-merger", () => {
     expect(merged.hooks.preToolUse).toEqual([]);
     expect(merged.hooks.postToolUse).toEqual([]);
   });
+
+  it("merges extended event hooks (sessionStart, notification, configChange)", () => {
+    const presetA: PresetConfig = {
+      ...basePreset,
+      name: "preset-a",
+      hooks: {
+        sessionStart: [{ id: "ctx-a", matcher: "compact", inline: "echo a" }],
+        notification: [{ id: "notify-a", matcher: "", inline: "echo notify" }],
+      },
+    };
+    const presetB: PresetConfig = {
+      ...basePreset,
+      name: "preset-b",
+      hooks: {
+        sessionStart: [{ id: "ctx-b", matcher: "compact", inline: "echo b" }],
+        configChange: [{ id: "audit-b", matcher: "", inline: "echo audit" }],
+      },
+    };
+
+    const merged = mergePresets([presetA, presetB]);
+
+    expect(merged.hooks.sessionStart).toHaveLength(2);
+    expect(merged.hooks.notification).toHaveLength(1);
+    expect(merged.hooks.configChange).toHaveLength(1);
+  });
+
+  it("deduplicates extended event hooks by id (later wins)", () => {
+    const presetA: PresetConfig = {
+      ...basePreset,
+      name: "preset-a",
+      hooks: {
+        sessionStart: [{ id: "compact", matcher: "compact", inline: "echo old" }],
+      },
+    };
+    const presetB: PresetConfig = {
+      ...basePreset,
+      name: "preset-b",
+      hooks: {
+        sessionStart: [{ id: "compact", matcher: "compact", inline: "echo new" }],
+      },
+    };
+
+    const merged = mergePresets([presetA, presetB]);
+
+    expect(merged.hooks.sessionStart).toHaveLength(1);
+    expect(merged.hooks.sessionStart![0].inline).toBe("echo new");
+  });
 });

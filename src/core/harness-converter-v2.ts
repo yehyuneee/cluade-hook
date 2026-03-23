@@ -1,5 +1,5 @@
 import type { HarnessConfig } from "./harness-schema.js";
-import type { MergedConfig, HookDefinition } from "./preset-types.js";
+import type { MergedConfig, HookDefinition, HooksConfig } from "./preset-types.js";
 import { harnessToMergedConfig, mergeEnforcementAndHooks } from "./harness-converter.js";
 import type { CatalogRegistry } from "../catalog/registry.js";
 import { createDefaultRegistry } from "../catalog/registry.js";
@@ -8,6 +8,15 @@ import { convertHookEntries } from "../catalog/converter.js";
 export interface MergedConfigV2 extends MergedConfig {
   catalogErrors?: string[];
 }
+
+/** Maps Claude Code event names to HooksConfig field names */
+const eventToField: Record<string, keyof HooksConfig> = {
+  PreToolUse: "preToolUse",
+  PostToolUse: "postToolUse",
+  SessionStart: "sessionStart",
+  Notification: "notification",
+  ConfigChange: "configChange",
+};
 
 export async function harnessToMergedConfigV2(
   harness: HarnessConfig,
@@ -32,10 +41,16 @@ export async function harnessToMergedConfigV2(
 
   // Convert hooksConfig entries from catalog into HookDefinition format.
   // Errors are reported as warnings but don't block valid hooks.
-  const additionalPreToolUse: HookDefinition[] = [];
-  const additionalPostToolUse: HookDefinition[] = [];
+  const additionalHooks: Record<string, HookDefinition[]> = {};
 
   for (const [event, entries] of Object.entries(catalogResult.hooksConfig)) {
+    const field = eventToField[event];
+    if (!field) continue; // unknown event — skip
+
+    if (!additionalHooks[field]) {
+      additionalHooks[field] = [];
+    }
+
     for (const entry of entries) {
       // Find the block id from the script path: .claude/hooks/<block-id>.sh
       const blockId = entry.command.replace(/.*\/(.+)\.sh$/, "$1");
@@ -46,21 +61,21 @@ export async function harnessToMergedConfigV2(
         inline: catalogResult.scripts.get(entry.command),
       };
 
-      if (event === "PreToolUse") {
-        additionalPreToolUse.push(hookDef);
-      } else if (event === "PostToolUse") {
-        additionalPostToolUse.push(hookDef);
-      }
-      // Other events (SessionStart, etc.) are not yet mapped to MergedConfig hooks
+      additionalHooks[field].push(hookDef);
     }
   }
 
+  const mergedHooks: Required<HooksConfig> = {
+    preToolUse: [...base.hooks.preToolUse, ...(additionalHooks.preToolUse ?? [])],
+    postToolUse: [...base.hooks.postToolUse, ...(additionalHooks.postToolUse ?? [])],
+    sessionStart: [...(base.hooks.sessionStart ?? []), ...(additionalHooks.sessionStart ?? [])],
+    notification: [...(base.hooks.notification ?? []), ...(additionalHooks.notification ?? [])],
+    configChange: [...(base.hooks.configChange ?? []), ...(additionalHooks.configChange ?? [])],
+  };
+
   return {
     ...base,
-    hooks: {
-      preToolUse: [...base.hooks.preToolUse, ...additionalPreToolUse],
-      postToolUse: [...base.hooks.postToolUse, ...additionalPostToolUse],
-    },
+    hooks: mergedHooks,
     ...(catalogResult.errors.length > 0 ? { catalogErrors: catalogResult.errors } : {}),
   };
 }

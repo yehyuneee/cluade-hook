@@ -290,3 +290,89 @@ describe("wrapWithLogger", () => {
     expect(result).toContain("#!/usr/bin/env bash");
   });
 });
+
+describe("generateHooks — extended events", () => {
+  let projectDir: string;
+
+  beforeEach(async () => {
+    projectDir = await mkdtemp(join(tmpdir(), "oh-my-harness-ext-"));
+  });
+
+  afterEach(async () => {
+    await rm(projectDir, { recursive: true, force: true });
+  });
+
+  it("generates scripts for SessionStart hooks", async () => {
+    const config = makeMergedConfig({
+      hooks: {
+        preToolUse: [],
+        postToolUse: [],
+        sessionStart: [
+          { id: "compact-context", matcher: "compact", inline: "#!/bin/bash\necho context" },
+        ],
+      },
+    });
+
+    const result = await generateHooks({ projectDir, config });
+
+    expect(result.generatedFiles).toHaveLength(1);
+    expect(result.hooksConfig["SessionStart"]).toHaveLength(1);
+    expect(result.hooksConfig["SessionStart"][0].matcher).toBe("compact");
+  });
+
+  it("generates scripts for Notification hooks", async () => {
+    const config = makeMergedConfig({
+      hooks: {
+        preToolUse: [],
+        postToolUse: [],
+        notification: [
+          { id: "desktop-notify", matcher: "", inline: "#!/bin/bash\necho notify" },
+        ],
+      },
+    });
+
+    const result = await generateHooks({ projectDir, config });
+
+    expect(result.generatedFiles).toHaveLength(1);
+    expect(result.hooksConfig["Notification"]).toHaveLength(1);
+    expect(result.hooksConfig["Notification"][0].hooks[0].command).toContain("desktop-notify.sh");
+  });
+
+  it("generates scripts for ConfigChange hooks", async () => {
+    const config = makeMergedConfig({
+      hooks: {
+        preToolUse: [],
+        postToolUse: [],
+        configChange: [
+          { id: "config-audit", matcher: "", inline: "#!/bin/bash\necho audit" },
+        ],
+      },
+    });
+
+    const result = await generateHooks({ projectDir, config });
+
+    expect(result.generatedFiles).toHaveLength(1);
+    expect(result.hooksConfig["ConfigChange"]).toHaveLength(1);
+    expect(result.hooksConfig["ConfigChange"][0].hooks[0].command).toContain("config-audit.sh");
+  });
+
+  it("mixes standard and extended events in single config", async () => {
+    const config = makeMergedConfig({
+      hooks: {
+        preToolUse: [
+          { id: "branch-guard", matcher: "Bash", inline: "#!/bin/bash\necho guard" },
+        ],
+        postToolUse: [],
+        sessionStart: [
+          { id: "compact-context", matcher: "compact", inline: "#!/bin/bash\necho context" },
+        ],
+      },
+    });
+
+    const result = await generateHooks({ projectDir, config });
+
+    expect(result.generatedFiles).toHaveLength(2);
+    expect(result.hooksConfig["PreToolUse"]).toHaveLength(1);
+    expect(result.hooksConfig["SessionStart"]).toHaveLength(1);
+  });
+});

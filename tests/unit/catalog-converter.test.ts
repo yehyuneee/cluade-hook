@@ -135,4 +135,31 @@ describe("convertHookEntries", () => {
     expect(result.errors).toHaveLength(1);
     expect(result.hooksConfig["PreToolUse"]).toHaveLength(1);
   });
+
+  it("allows duplicate block ids with different params (multi-instance)", async () => {
+    registry.register(
+      makeBlock({
+        id: "lint-on-save",
+        event: "PostToolUse",
+        matcher: "Edit|Write",
+        template: "#!/bin/bash\necho {{{command}}}",
+        params: [
+          { name: "filePattern", type: "string", description: "glob", required: true },
+          { name: "command", type: "string", description: "cmd", required: true },
+        ],
+      }),
+    );
+
+    const entries: HookEntry[] = [
+      { block: "lint-on-save", params: { filePattern: "*.ts", command: "eslint" } },
+      { block: "lint-on-save", params: { filePattern: "*.py", command: "ruff" } },
+    ];
+
+    const result = await convertHookEntries(entries, registry, projectDir);
+
+    // Both instances should be generated
+    expect(result.scripts.size).toBe(2);
+    expect(result.hooksConfig["PostToolUse"]).toHaveLength(2);
+    expect(result.errors.filter((e) => e.includes("Duplicate"))).toHaveLength(0);
+  });
 });

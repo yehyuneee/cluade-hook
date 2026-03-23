@@ -89,6 +89,9 @@ export function harnessToMergedConfig(harness: HarnessConfig): MergedConfig {
     hooks: {
       preToolUse: [],
       postToolUse: [],
+      sessionStart: [],
+      notification: [],
+      configChange: [],
     },
     settings: {
       permissions: {

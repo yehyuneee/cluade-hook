@@ -30,6 +30,9 @@ export type ClaudeMdSection = z.infer<typeof ClaudeMdSectionSchema>;
 export const HooksConfigSchema = z.object({
   preToolUse: z.array(HookDefinitionSchema).optional(),
   postToolUse: z.array(HookDefinitionSchema).optional(),
+  sessionStart: z.array(HookDefinitionSchema).optional(),
+  notification: z.array(HookDefinitionSchema).optional(),
+  configChange: z.array(HookDefinitionSchema).optional(),
 });
 
 export type HooksConfig = z.infer<typeof HooksConfigSchema>;
