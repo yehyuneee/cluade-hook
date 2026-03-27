@@ -62,3 +62,4 @@ settings:
       - "Bash(sudo *)"
       - "Bash(rm -rf *)"
       - "Bash(terraform apply -auto-approve*)"
+      - "Bash(terraform apply --auto-approve*)"
