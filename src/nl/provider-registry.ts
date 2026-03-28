@@ -65,12 +65,12 @@ export function createProvider(config: ProviderConfig): LLMProvider {
   }
 
   // API mode
-  const apiKey = config.apiKey;
+  const apiKey = config.apiKey?.trim();
   if (!apiKey) {
     throw new Error(`API key is required for "${config.provider}" API mode`);
   }
 
-  const model = config.model ?? def.defaultModel;
+  const model = config.model?.trim() || def.defaultModel;
 
   switch (config.provider) {
     case "claude":
