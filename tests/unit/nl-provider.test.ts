@@ -3,6 +3,7 @@ import {
   type LLMProvider,
   type ProviderDefinition,
   getAvailableProviders,
+  getAvailableModels,
   createProvider,
 } from "../../src/nl/provider-registry.js";
 import type { ProviderConfig } from "../../src/nl/config-store.js";
@@ -76,5 +77,59 @@ describe("provider-registry", () => {
     const openai = providers.find((p) => p.name === "openai");
     expect(openai!.supportsCli).toBe(false);
     expect(openai!.supportsApi).toBe(true);
+  });
+
+  it("each provider has availableModels list with at least one model", () => {
+    const providers = getAvailableProviders();
+    for (const p of providers) {
+      expect(p.availableModels.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("each model entry has id and label", () => {
+    const providers = getAvailableProviders();
+    for (const p of providers) {
+      for (const m of p.availableModels) {
+        expect(m.id).toBeTruthy();
+        expect(m.label).toBeTruthy();
+      }
+    }
+  });
+
+  it("defaultModel is included in availableModels", () => {
+    const providers = getAvailableProviders();
+    for (const p of providers) {
+      const ids = p.availableModels.map((m) => m.id);
+      expect(ids).toContain(p.defaultModel);
+    }
+  });
+
+  it("openai default model is gpt-5.4", () => {
+    const providers = getAvailableProviders();
+    const openai = providers.find((p) => p.name === "openai");
+    expect(openai!.defaultModel).toBe("gpt-5.4");
+  });
+
+  it("claude default model is claude-sonnet-4-6", () => {
+    const providers = getAvailableProviders();
+    const claude = providers.find((p) => p.name === "claude");
+    expect(claude!.defaultModel).toBe("claude-sonnet-4-6");
+  });
+
+  it("gemini default model is gemini-2.5-pro", () => {
+    const providers = getAvailableProviders();
+    const gemini = providers.find((p) => p.name === "gemini");
+    expect(gemini!.defaultModel).toBe("gemini-2.5-pro");
+  });
+
+  it("getAvailableModels returns models for valid provider", () => {
+    const models = getAvailableModels("openai");
+    expect(models.length).toBeGreaterThan(0);
+    expect(models[0].id).toBeTruthy();
+  });
+
+  it("getAvailableModels returns empty array for unknown provider", () => {
+    const models = getAvailableModels("unknown-llm");
+    expect(models).toEqual([]);
   });
 });

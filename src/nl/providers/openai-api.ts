@@ -1,6 +1,6 @@
 import type { LLMProvider } from "../provider-registry.js";
 
-const DEFAULT_MODEL = "gpt-4o";
+const DEFAULT_MODEL = "gpt-5.4";
 const API_URL = "https://api.openai.com/v1/chat/completions";
 const REQUEST_TIMEOUT_MS = 60_000;
 
@@ -24,7 +24,7 @@ export function createOpenaiApiProvider(
           body: JSON.stringify({
             model,
             messages: [{ role: "user", content: prompt }],
-            max_tokens: 4096,
+            max_completion_tokens: 4096,
           }),
           signal: controller.signal,
         });

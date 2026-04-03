@@ -75,32 +75,23 @@ export async function runProviderSetup(): Promise<ProviderConfig | undefined> {
 
     config.apiKey = apiKey as string;
 
-    // Optional: custom model
-    const useCustomModel = await p.confirm({
-      message: `Use default model (${def.defaultModel})?`,
-      initialValue: true,
+    // Select model from available list
+    const selectedModel = await p.select({
+      message: "Select model:",
+      options: def.availableModels.map((m) => ({
+        value: m.id,
+        label: m.label,
+        hint: m.id === def.defaultModel ? "default" : undefined,
+      })),
+      initialValue: def.defaultModel,
     });
 
-    if (p.isCancel(useCustomModel)) {
+    if (p.isCancel(selectedModel)) {
       p.cancel("Provider setup cancelled.");
       return undefined;
     }
 
-    if (!useCustomModel) {
-      const model = await p.text({
-        message: "Enter model name:",
-        placeholder: def.defaultModel,
-      });
-
-      if (p.isCancel(model)) {
-        p.cancel("Provider setup cancelled.");
-        return undefined;
-      }
-
-      config.model = model as string;
-    } else {
-      config.model = def.defaultModel;
-    }
+    config.model = selectedModel as string;
   } else {
     config.cliCommand = def.cliCommand ?? def.name;
   }
