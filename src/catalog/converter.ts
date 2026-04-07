@@ -1,4 +1,3 @@
-import path from "path";
 import type { HookEntry } from "./types.js";
 import type { CatalogRegistry } from "./registry.js";
 import { renderTemplate, validateParams, applyDefaults } from "./template-engine.js";
@@ -52,7 +51,7 @@ export async function convertHookEntries(
     const count = blockInstanceCount.get(entry.block) ?? 0;
     blockInstanceCount.set(entry.block, count + 1);
     const scriptName = count === 0 ? `${entry.block}.sh` : `${entry.block}-${count}.sh`;
-    const scriptPath = path.join(projectDir, ".claude", "hooks", scriptName);
+    const scriptPath = `.claude/hooks/${scriptName}`;
     scripts.set(scriptPath, scriptContent);
 
     const hookEntry: HookConfigEntry = {
