@@ -39,9 +39,20 @@ export const defaultClaudeRunner: LLMRunner = async (prompt) => {
 };
 
 function extractJson(text: string): string {
-  // Try to extract a JSON object from text that may contain extra content
-  const match = text.match(/\{[\s\S]*\}/);
-  if (match) return match[0];
+  // Extract the first complete JSON object using balanced brace counting
+  // to avoid greedy matching that would capture multiple objects
+  const start = text.indexOf("{");
+  if (start === -1) return text.trim();
+
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}") {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  // If no balanced closing brace found, return the rest of the text
   return text.trim();
 }
 
