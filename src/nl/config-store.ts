@@ -40,5 +40,7 @@ export async function loadProviderConfig(): Promise<ProviderConfig | undefined> 
 export async function saveProviderConfig(config: ProviderConfig): Promise<void> {
   const dir = getConfigDir();
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(getConfigPath(), JSON.stringify(config, null, 2) + "\n", "utf-8");
+  const configPath = getConfigPath();
+  await fs.writeFile(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+  await fs.chmod(configPath, 0o600);
 }

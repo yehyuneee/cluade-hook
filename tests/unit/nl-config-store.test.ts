@@ -88,4 +88,11 @@ describe("config-store", () => {
     const loaded = await loadProviderConfig();
     expect(loaded!.provider).toBe("openai");
   });
+
+  it("saveProviderConfig sets file permissions to 0o600", async () => {
+    await saveProviderConfig({ provider: "openai", method: "api", apiKey: "sk-secret" });
+    const configPath = path.join(tmpHome, ".omh", "config.json");
+    const stat = await fs.stat(configPath);
+    expect(stat.mode & 0o777).toBe(0o600);
+  });
 });
