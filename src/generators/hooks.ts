@@ -85,10 +85,13 @@ export async function generateHooks(options: GenerateHooksOptions): Promise<Hook
 
     const safeId = hook.id.replace(/[^a-zA-Z0-9_-]/g, "");
     let scriptName = `${safeId}.sh`;
-    // Prevent collisions when different events share the same hook.id
+    // Prevent collisions within the same event using numeric suffix
     if (usedScriptNames.has(scriptName)) {
-      const safeEvent = hook.event.replace(/[^a-zA-Z0-9_-]/g, "").toLowerCase();
-      scriptName = `${safeEvent}-${safeId}.sh`;
+      let counter = 1;
+      while (usedScriptNames.has(`${safeId}-${counter}.sh`)) {
+        counter++;
+      }
+      scriptName = `${safeId}-${counter}.sh`;
     }
     usedScriptNames.add(scriptName);
 

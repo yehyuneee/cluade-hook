@@ -228,6 +228,43 @@ describe("generateHooks", () => {
     expect(content).toContain("_log_event");
     expect(content).toContain("EXIT");
   });
+
+  it("avoids file collision when two hook ids sanitize to the same name in same event", async () => {
+    const config = makeMergedConfig({
+      hooks: {
+        preToolUse: [
+          { id: "my.hook", matcher: "Bash", inline: "#!/bin/bash\necho first" },
+          { id: "myhook", matcher: "Edit|Write", inline: "#!/bin/bash\necho second" },
+        ],
+        postToolUse: [],
+      },
+    });
+
+    const result = await generateHooks({ projectDir, config });
+
+    // Both hooks should be generated as separate files
+    expect(result.generatedFiles).toHaveLength(2);
+
+    // Check that files exist and have different names
+    const file1 = join(projectDir, ".claude/hooks/myhook.sh");
+    const file2 = join(projectDir, ".claude/hooks/myhook-1.sh");
+
+    const content1 = await readFile(file1, "utf8");
+    const content2 = await readFile(file2, "utf8");
+
+    expect(content1).toContain("echo first");
+    expect(content2).toContain("echo second");
+
+    // Both files should be in generatedFiles and hooksConfig
+    expect(result.generatedFiles).toContain(file1);
+    expect(result.generatedFiles).toContain(file2);
+
+    // Check hooksConfig contains both hooks
+    expect(result.hooksConfig["PreToolUse"]).toHaveLength(2);
+    const commands = result.hooksConfig["PreToolUse"].map(h => h.hooks[0].command);
+    expect(commands).toContain("bash .claude/hooks/myhook.sh");
+    expect(commands).toContain("bash .claude/hooks/myhook-1.sh");
+  });
 });
 
 describe("wrapWithLogger", () => {
