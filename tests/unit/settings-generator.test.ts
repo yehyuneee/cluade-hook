@@ -131,6 +131,124 @@ describe("generateSettings", () => {
     expect(settings.permissions.deny).toContain("Bash(rm -rf /)");
   });
 
+  it("removes managed permissions that were removed from harness.yaml", async () => {
+    const hooksOutput = makeHooksOutput();
+
+    // 1st sync: allow has Bash(npm*)
+    const config1 = makeMergedConfig({
+      settings: {
+        permissions: {
+          allow: ["Bash(npm*)"],
+          deny: [],
+        },
+      },
+    });
+    await generateSettings({ projectDir: tmpDir, config: config1, hooksOutput });
+
+    const settingsPath = path.join(tmpDir, ".claude", "settings.json");
+    const after1 = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
+    expect(after1.permissions.allow).toContain("Bash(npm*)");
+
+    // 2nd sync: allow is now empty (Bash(npm*) removed from harness.yaml)
+    const config2 = makeMergedConfig({
+      settings: {
+        permissions: {
+          allow: [],
+          deny: [],
+        },
+      },
+    });
+    await generateSettings({ projectDir: tmpDir, config: config2, hooksOutput });
+
+    const after2 = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
+    // Bash(npm*) was managed, so it should be removed
+    expect(after2.permissions.allow).not.toContain("Bash(npm*)");
+  });
+
+  it("preserves user-added permissions when managed permissions change", async () => {
+    const hooksOutput = makeHooksOutput();
+    const claudeDir = path.join(tmpDir, ".claude");
+
+    // 1st sync: managed allow has Bash(npm*)
+    const config1 = makeMergedConfig({
+      settings: {
+        permissions: {
+          allow: ["Bash(npm*)"],
+          deny: ["Bash(rm*)"],
+        },
+      },
+    });
+    await generateSettings({ projectDir: tmpDir, config: config1, hooksOutput });
+
+    // User manually adds their own permission to settings.json
+    const settingsPath = path.join(claudeDir, "settings.json");
+    const settings = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
+    settings.permissions.allow.push("Bash(git push)");
+    await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+
+    // 2nd sync: managed allow changes (removes npm*, adds pnpm*)
+    const config2 = makeMergedConfig({
+      settings: {
+        permissions: {
+          allow: ["Bash(pnpm*)"],
+          deny: [],
+        },
+      },
+    });
+    await generateSettings({ projectDir: tmpDir, config: config2, hooksOutput });
+
+    const after = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
+    // User-added permission preserved
+    expect(after.permissions.allow).toContain("Bash(git push)");
+    // New managed permission added
+    expect(after.permissions.allow).toContain("Bash(pnpm*)");
+    // Old managed permission removed
+    expect(after.permissions.allow).not.toContain("Bash(npm*)");
+    // Old managed deny removed
+    expect(after.permissions.deny).not.toContain("Bash(rm*)");
+  });
+
+  it("handles missing _ohMyHarness.managedPermissions gracefully (backward compat)", async () => {
+    const hooksOutput = makeHooksOutput();
+    const claudeDir = path.join(tmpDir, ".claude");
+    await fs.mkdir(claudeDir, { recursive: true });
+
+    // Existing settings without managedPermissions (legacy)
+    const legacySettings = {
+      permissions: {
+        allow: ["Bash(npm test)", "Bash(legacy*)"],
+        deny: [],
+      },
+      _ohMyHarness: {
+        managedAt: "2024-01-01T00:00:00.000Z",
+        presets: ["_base"],
+      },
+    };
+    await fs.writeFile(
+      path.join(claudeDir, "settings.json"),
+      JSON.stringify(legacySettings, null, 2) + "\n",
+    );
+
+    // Sync with new config
+    const config = makeMergedConfig({
+      settings: {
+        permissions: {
+          allow: ["Bash(pnpm test*)"],
+          deny: [],
+        },
+      },
+    });
+    await generateSettings({ projectDir: tmpDir, config, hooksOutput });
+
+    const settingsPath = path.join(claudeDir, "settings.json");
+    const after = JSON.parse(await fs.readFile(settingsPath, "utf-8"));
+    // Legacy permissions preserved (treated as user-added since no managedPermissions existed)
+    expect(after.permissions.allow).toContain("Bash(npm test)");
+    expect(after.permissions.allow).toContain("Bash(legacy*)");
+    // New managed permission added
+    expect(after.permissions.allow).toContain("Bash(pnpm test*)");
+  });
+
   it("is idempotent — running twice with same config produces identical output", async () => {
     const config = makeMergedConfig();
     const hooksOutput = makeHooksOutput();

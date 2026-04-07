@@ -23,21 +23,33 @@ export async function generateSettings(options: GenerateSettingsOptions): Promis
     // File doesn't exist or is invalid JSON — start fresh
   }
 
-  // Deep merge permissions: preserve existing, add managed entries
+  // Deep merge permissions: preserve user-added, replace managed entries
   const existingPermissions = (existing.permissions ?? {}) as {
     allow?: string[];
     deny?: string[];
   };
 
-  const mergedAllow = Array.from(
-    new Set([...(existingPermissions.allow ?? []), ...(config.settings.permissions.allow ?? [])]),
-  );
-  const mergedDeny = Array.from(
-    new Set([...(existingPermissions.deny ?? []), ...(config.settings.permissions.deny ?? [])]),
-  );
+  const existingMeta = (existing._ohMyHarness ?? {}) as {
+    managedAt?: string;
+    managedPermissions?: { allow?: string[]; deny?: string[] };
+  };
 
-  // Preserve managedAt if content is unchanged
-  const existingMeta = (existing._ohMyHarness ?? {}) as { managedAt?: string };
+  // Previous managed permissions (empty if legacy settings without tracking)
+  const prevManaged = existingMeta.managedPermissions ?? { allow: [], deny: [] };
+  const prevManagedAllow = new Set(prevManaged.allow ?? []);
+  const prevManagedDeny = new Set(prevManaged.deny ?? []);
+
+  // New managed permissions from current config
+  const newManagedAllow = config.settings.permissions.allow ?? [];
+  const newManagedDeny = config.settings.permissions.deny ?? [];
+
+  // User-added = existing - previous managed
+  const userAllow = (existingPermissions.allow ?? []).filter((p) => !prevManagedAllow.has(p));
+  const userDeny = (existingPermissions.deny ?? []).filter((p) => !prevManagedDeny.has(p));
+
+  // Final = user-added + new managed (deduplicated)
+  const mergedAllow = Array.from(new Set([...userAllow, ...newManagedAllow]));
+  const mergedDeny = Array.from(new Set([...userDeny, ...newManagedDeny]));
   const previousManagedAt = existingMeta.managedAt;
 
   const result: Record<string, unknown> = {
@@ -51,6 +63,10 @@ export async function generateSettings(options: GenerateSettingsOptions): Promis
     _ohMyHarness: {
       managedAt: "__PLACEHOLDER__",
       presets: config.presets,
+      managedPermissions: {
+        allow: newManagedAllow,
+        deny: newManagedDeny,
+      },
     },
   };
 
