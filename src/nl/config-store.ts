@@ -41,6 +41,7 @@ export async function saveProviderConfig(config: ProviderConfig): Promise<void> 
   const dir = getConfigDir();
   await fs.mkdir(dir, { recursive: true });
   const configPath = getConfigPath();
-  await fs.writeFile(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+  const payload = JSON.stringify(config, null, 2) + "\n";
+  await fs.writeFile(configPath, payload, { encoding: "utf-8", mode: 0o600 });
   await fs.chmod(configPath, 0o600);
 }
