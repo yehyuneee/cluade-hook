@@ -84,8 +84,10 @@ describe("generateClaudeMd()", () => {
 
     content = await readFile(claudeMdPath, "utf-8");
     expect(content).toContain("Updated content one");
-    // section-two marker is removed because it is no longer in the config
+    // section-two marker pair is removed because it is no longer in the config
     expect(hasManagedSection(content, "section-two")).toBe(false);
+    expect(content).not.toContain("<!-- oh-my-harness:start:section-two -->");
+    expect(content).not.toContain("<!-- oh-my-harness:end:section-two -->");
   });
 
   it("manages multiple sections simultaneously in correct priority order", async () => {
