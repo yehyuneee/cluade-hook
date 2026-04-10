@@ -17,7 +17,7 @@ export interface ConvertResult {
 export async function convertHookEntries(
   entries: HookEntry[],
   registry: CatalogRegistry,
-  projectDir: string,
+  _projectDir: string,
 ): Promise<ConvertResult> {
   const hooksConfig: Record<string, HookConfigEntry[]> = {};
   const scripts: Map<string, string> = new Map();
