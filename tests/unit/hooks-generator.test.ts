@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, rm, readFile, stat } from "node:fs/promises";
+import { mkdtemp, rm, readFile, stat, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { generateHooks, wrapWithLogger } from "../../src/generators/hooks.js";
 import type { MergedConfig } from "../../src/core/preset-types.js";
+
+const execFileAsync = promisify(execFile);
 
 function makeMergedConfig(overrides: Partial<MergedConfig> = {}): MergedConfig {
   return {
@@ -95,10 +99,10 @@ describe("generateHooks", () => {
     expect(result.hooksConfig).toHaveProperty("PostToolUse");
 
     expect(result.hooksConfig["PreToolUse"]).toEqual([
-      { matcher: "Bash", hooks: [{ type: "command", command: "bash .claude/hooks/command-guard.sh" }] },
+      { matcher: "Bash", hooks: [{ type: "command", command: `bash "${join(projectDir, ".claude/hooks/command-guard.sh")}"` }] },
     ]);
     expect(result.hooksConfig["PostToolUse"]).toEqual([
-      { matcher: "Edit|Write", hooks: [{ type: "command", command: "bash .claude/hooks/lint-on-save.sh" }] },
+      { matcher: "Edit|Write", hooks: [{ type: "command", command: `bash "${join(projectDir, ".claude/hooks/lint-on-save.sh")}"` }] },
     ]);
   });
 
@@ -168,8 +172,8 @@ describe("generateHooks", () => {
 
     expect(result.hooksConfig["PreToolUse"]).toHaveLength(2);
     expect(result.hooksConfig["PreToolUse"]).toEqual([
-      { matcher: "Bash", hooks: [{ type: "command", command: "bash .claude/hooks/guard-bash.sh" }] },
-      { matcher: "Edit|Write", hooks: [{ type: "command", command: "bash .claude/hooks/guard-edit.sh" }] },
+      { matcher: "Bash", hooks: [{ type: "command", command: `bash "${join(projectDir, ".claude/hooks/guard-bash.sh")}"` }] },
+      { matcher: "Edit|Write", hooks: [{ type: "command", command: `bash "${join(projectDir, ".claude/hooks/guard-edit.sh")}"` }] },
     ]);
   });
 
@@ -190,7 +194,7 @@ describe("generateHooks", () => {
     const scriptPath = join(projectDir, `.claude/hooks/${safeId}.sh`);
     expect(result.generatedFiles).toContain(scriptPath);
     expect(result.hooksConfig["PreToolUse"]).toEqual([
-      { matcher: "Bash", hooks: [{ type: "command", command: `bash .claude/hooks/${safeId}.sh` }] },
+      { matcher: "Bash", hooks: [{ type: "command", command: `bash "${join(projectDir, `.claude/hooks/${safeId}.sh`)}"` }] },
     ]);
     // Ensure no file was written outside the hooks dir
     const content = await readFile(scriptPath, "utf8");
@@ -217,8 +221,8 @@ describe("generateHooks", () => {
     expect(result.generatedFiles).toContain(file1);
     expect(result.generatedFiles).toContain(file2);
     expect(result.hooksConfig["PreToolUse"]).toEqual([
-      { matcher: "Bash", hooks: [{ type: "command", command: "bash .claude/hooks/hook.sh" }] },
-      { matcher: "Edit|Write", hooks: [{ type: "command", command: "bash .claude/hooks/hook-1.sh" }] },
+      { matcher: "Bash", hooks: [{ type: "command", command: `bash "${join(projectDir, ".claude/hooks/hook.sh")}"` }] },
+      { matcher: "Edit|Write", hooks: [{ type: "command", command: `bash "${join(projectDir, ".claude/hooks/hook-1.sh")}"` }] },
     ]);
   });
 
@@ -314,8 +318,9 @@ describe("generateHooks", () => {
     // Check hooksConfig contains both hooks
     expect(result.hooksConfig["PreToolUse"]).toHaveLength(2);
     const commands = result.hooksConfig["PreToolUse"].map(h => h.hooks[0].command);
-    expect(commands).toContain("bash .claude/hooks/myhook.sh");
-    expect(commands).toContain("bash .claude/hooks/myhook-1.sh");
+    expect(commands).toContain(`bash "${join(projectDir, ".claude/hooks/myhook.sh")}"`);
+    expect(commands).toContain(`bash "${join(projectDir, ".claude/hooks/myhook-1.sh")}"`);
+
   });
 
   it("avoids file collision when same hook id exists in different events", async () => {
@@ -338,10 +343,10 @@ describe("generateHooks", () => {
     expect(result.generatedFiles).toContain(file1);
     expect(result.generatedFiles).toContain(file2);
     expect(result.hooksConfig["PreToolUse"]).toEqual([
-      { matcher: "Bash", hooks: [{ type: "command", command: "bash .claude/hooks/myhook.sh" }] },
+      { matcher: "Bash", hooks: [{ type: "command", command: `bash "${join(projectDir, ".claude/hooks/myhook.sh")}"` }] },
     ]);
     expect(result.hooksConfig["PostToolUse"]).toEqual([
-      { matcher: "Edit|Write", hooks: [{ type: "command", command: "bash .claude/hooks/myhook-1.sh" }] },
+      { matcher: "Edit|Write", hooks: [{ type: "command", command: `bash "${join(projectDir, ".claude/hooks/myhook-1.sh")}"` }] },
     ]);
   });
 });
@@ -404,6 +409,18 @@ describe("wrapWithLogger", () => {
     const result = wrapWithLogger(script);
     expect(result).toContain("_OMH_STATE_DIR");
     expect(result).toContain("#!/usr/bin/env bash");
+  });
+
+  it("produces absolute _OMH_STATE_DIR when projectDir is provided", () => {
+    const script = "#!/bin/bash\nINPUT=$(cat)\nexit 0";
+    const result = wrapWithLogger(script, "PreToolUse", "/tmp/my-project");
+    expect(result).toContain('_OMH_STATE_DIR="/tmp/my-project/.claude/hooks/.state"');
+  });
+
+  it("keeps relative _OMH_STATE_DIR when projectDir is omitted", () => {
+    const script = "#!/bin/bash\nINPUT=$(cat)\nexit 0";
+    const result = wrapWithLogger(script, "PreToolUse");
+    expect(result).toContain('_OMH_STATE_DIR=".claude/hooks/.state"');
   });
 });
 
@@ -573,5 +590,81 @@ describe("generateHooks — extended events", () => {
     expect(result.generatedFiles).toHaveLength(2);
     expect(result.hooksConfig["PreToolUse"]).toHaveLength(1);
     expect(result.hooksConfig["SessionStart"]).toHaveLength(1);
+  });
+});
+
+describe("generateHooks — cwd-independence", () => {
+  let projectDir: string;
+  let differentDir: string;
+
+  beforeEach(async () => {
+    projectDir = await mkdtemp(join(tmpdir(), "oh-my-harness-cwd-"));
+    differentDir = await mkdtemp(join(tmpdir(), "oh-my-harness-other-"));
+  });
+
+  afterEach(async () => {
+    await rm(projectDir, { recursive: true, force: true });
+    await rm(differentDir, { recursive: true, force: true });
+  });
+
+  it("hook script executes successfully when cwd differs from projectDir", async () => {
+    const config = makeMergedConfig({
+      hooks: {
+        preToolUse: [
+          { id: "cwd-test", matcher: "Bash", inline: '#!/bin/bash\nset -euo pipefail\nINPUT=$(cat)\nexit 0' },
+        ],
+        postToolUse: [],
+      },
+    });
+
+    const result = await generateHooks({ projectDir, config });
+    const scriptPath = result.generatedFiles[0];
+
+    // Execute the hook script from a DIFFERENT working directory, piping empty stdin
+    const { stderr } = await execFileAsync("bash", ["-c", `echo '{}' | bash "${scriptPath}"`], {
+      cwd: differentDir,
+      env: { ...process.env },
+      timeout: 5000,
+    });
+
+    // Script should exit 0 (no error thrown)
+    expect(stderr).toBe("");
+  });
+
+  it("logger writes events.jsonl to absolute path under projectDir, not cwd", async () => {
+    const config = makeMergedConfig({
+      hooks: {
+        preToolUse: [
+          {
+            id: "logger-test",
+            matcher: "Bash",
+            inline: '#!/bin/bash\nset -euo pipefail\nINPUT=$(cat)\n_log_event "block" "test"\nexit 0',
+          },
+        ],
+        postToolUse: [],
+      },
+    });
+
+    const result = await generateHooks({ projectDir, config });
+    const scriptPath = result.generatedFiles[0];
+
+    // Execute from a different directory, piping empty stdin
+    await execFileAsync("bash", ["-c", `echo '{}' | bash "${scriptPath}"`], {
+      cwd: differentDir,
+      env: { ...process.env },
+      timeout: 5000,
+    });
+
+    // events.jsonl should be under projectDir, NOT under differentDir
+    const eventsPath = join(projectDir, ".claude/hooks/.state/events.jsonl");
+    await expect(access(eventsPath)).resolves.toBeUndefined();
+
+    const events = await readFile(eventsPath, "utf8");
+    expect(events).toContain('"decision":"block"');
+    expect(events).toContain('"reason":"test"');
+
+    // Verify nothing was written under differentDir
+    const wrongEventsPath = join(differentDir, ".claude/hooks/.state/events.jsonl");
+    await expect(access(wrongEventsPath)).rejects.toThrow();
   });
 });
