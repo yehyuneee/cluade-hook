@@ -49,8 +49,9 @@ describe("tddGuard block", () => {
   });
 
   it("template supports JVM test convention (e.g. IoViewTest.kt)", () => {
-    // Android/Kotlin/Java projects use *Test.kt suffix instead of .test.ts
-    expect(tddGuard.template).toContain('contains("Test")');
+    // Android/Kotlin/Java projects use *Test.kt / *Test.java suffix
+    expect(tddGuard.template).toContain('endswith("Test.kt")');
+    expect(tddGuard.template).toContain('endswith("Test.java")');
   });
 
   it("template allows non-code files to pass through", () => {

@@ -56,7 +56,7 @@ hooks:
         COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
         if echo "$COMMAND" | grep -qE "git commit"; then
           echo "oh-my-harness: Running ./gradlew testDebugUnitTest before commit..." >&2
-          if ! ./gradlew testDebugUnitTest >&2 2>&1; then
+          if ! ./gradlew testDebugUnitTest >&2; then
             echo "{\"decision\": \"block\", \"reason\": \"oh-my-harness: unit tests failed, commit blocked\"}"
             exit 0
           fi
@@ -131,10 +131,10 @@ hooks:
           esac
           if [[ -n "$MODULE" ]]; then
             echo "oh-my-harness: Running ${MODULE}:lintDebug..." >&2
-            ./gradlew "${MODULE}:lintDebug" >&2 2>&1 || true
+            ./gradlew "${MODULE}:lintDebug" >&2 || true
           else
             echo "oh-my-harness: Running lintDebug..." >&2
-            ./gradlew lintDebug >&2 2>&1 || true
+            ./gradlew lintDebug >&2 || true
           fi
         fi
         exit 0
